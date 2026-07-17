@@ -1,0 +1,15 @@
+# Python cache
+__pycache__/
+
+# Compiled executables in gpu-engine
+gpu-engine/host_scheduler
+gpu-engine/host_scheduler.exe
+gpu-engine/gpu_test
+gpu-engine/gpu_test.exe
+gpu-engine/cpu_selftest
+gpu-engine/cpu_selftest.exe
+gpu-engine/cusparse_test
+gpu-engine/cusparse_test.exe
+
+# Scratch
+scratch/

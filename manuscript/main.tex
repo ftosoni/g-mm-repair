@@ -1,0 +1,459 @@
+\documentclass[twoside,leqno,twocolumn]{article}
+
+\usepackage[letterpaper]{geometry}
+\usepackage{siamproceedings}
+
+\usepackage[T1]{fontenc}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage{epstopdf}
+\usepackage{enumitem}
+\usepackage{algorithmic}
+\ifpdf
+ \DeclareGraphicsExtensions{.eps,.pdf,.png,.jpg}
+\else
+ \DeclareGraphicsExtensions{.eps}
+\fi
+
+\newcommand{\creflastconjunction}{, and~}
+\newsiamremark{remark}{Remark}
+\newsiamthm{claim}{Claim}
+
+\usepackage{amsopn}
+\DeclareMathOperator{\diag}{diag}
+
+%% Minted/listings support for pseudo-code.
+\usepackage{listings}
+\lstset{breaklines=true}
+\lstdefinestyle{kernel}{
+ basicstyle=\ttfamily\scriptsize,
+ numbers=none,
+ keepspaces=true,
+ columns=fullflexible,
+}
+
+%% Figures live as standalone tikz files under figures/, included via \includestandalone.
+\usepackage{standalone}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit,backgrounds,calc,matrix}
+\newcommand{\circled}[1]{\textcircled{\scriptsize #1}}
+\newcommand{\sy}[2]{\langle{#1,\!#2}\rangle}
+\newcommand{\sz}[1]{\$}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{booktabs}
+
+%% Cross-references. cleveref is loaded late, after siamproceedings has set up
+%% its ntheorem-based theorem/lemma/definition environments.
+\usepackage{cleveref}
+\crefname{lstlisting}{Listing}{Listings}
+\Crefname{lstlisting}{Listing}{Listings}
+\crefname{equation}{eq.}{eqs.}
+\Crefname{equation}{Eq.}{Eqs.}
+
+\begin{document}
+
+\newcommand\relatedversion{}
+
+\title{\large Streaming Right Multiplication over Grammar-Compressed Matrices:\\
+ A Memory-Bounded GPU Engine for Genotype and Graph Data\relatedversion}
+
+% \author{Francesco Tosoni\thanks{Sant'Anna School of Advanced Studies, L'EMbeDS,
+%  p.zza Martiri della Libert\`a 33, 56127 Pisa PI, Italy
+%  (\email{Francesco.Tosoni@santannapisa.it}).}
+%  \and Gabriele Mencagli\thanks{Department of Computer Science, University of Pisa,
+%  Largo B. Pontecorvo 3, 56127 Pisa PI, Italy
+%  (\email{gabriele.mencagli@unipi.it}).}}
+
+\author{(Authors Omitted)}
+
+
+\date{}
+
+\maketitle
+
+\fancyfoot[R]{\scriptsize{Copyright \textcopyright\ 20XX by SIAM\\
+Unauthorized reproduction of this article is prohibited}}
+
+\begin{abstract}
+Grammar-compressed matrices (the \texttt{mm-repair} family~\cite{mmrepair}) store a matrix's non-zero structure as a RePair straight-line program (SLP)~\cite{repair}, supporting matrix--vector products in time and space proportional to the {\em compressed} size. We target the regime where this is decisive on a GPU: when the uncompressed matrix exceeds device memory, so footprint (not floating-point throughput) is the binding constraint. Our SLP is a directed acyclic graph (DAG) of out-degree~2, and the right product $y=Mx$ is a single bottom-up sweep (leaves~$\to$~roots): a conflict-free {\em gather}. The dual left product is a {\em scatter} with write contention, which we deliberately avoid. We make the grammar {\em properly layered} (every nonterminal child one level below its parent) via {\em pass-through completion}, which inserts identity nodes to carry values upward until consumed. This yields a {\em streaming} evaluation in which each level reads only the level below and writes the next, so the live set fits in two alternating read-only/write-only buffers instead of scaling with the whole grammar; the per-level width equals the live set. On genotype matrices, where a polygenic score is exactly the right product $y=G\beta$~\cite{choi2020tutorial}, a CUDA implementation shows a clear {\em space} advantage: a device footprint 4 to 8 times smaller than an uncompressed cuSPARSE \cite{nvidia2026cusparse} CSR baseline, single-vector times within a small factor of cuSPARSE, and consistently lower energy; its batched throughput still trails cuSPARSE's tuned SpMM. Because the sweep needs only an associative combine, the same engine and schedule evaluate any monoid homomorphism over the grammar by swapping a small leaf/combine/emit policy; the same reachability sweep then scales to the billion-edge Software Heritage graph ($261$\,TB dense and unmaterializable, $21\times$ smaller serialized than CSR), where the memory argument holds. We frame this as an algorithm-engineering case study: structural metrics (depth, live-set width, completion cost) are measured, architecture-independent grammar properties, whereas time and energy are profiled on a single board.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+The interest sparked by~\cite{cla_vldbj,cla_cacm} in computation-friendly matrix formats for compressed-domain linear algebra~\cite{impossibility_gra_linalg,accelerating_gnn,arroyuelo2026boosting,rpq-k2tree-vldbj,aware,unified_lossless_sparse,mmrepair,francisco2022friendly,efficient_marino,greener} keeps matrices in a compact yet operable form, so linear algebra runs directly on the compressed representation without full decompression. The same principle drives compute-on-compressed-text engines on GPUs and FPGAs~\cite{gtadoc,ftadoc} and the literature on indexing highly repetitive collections~\cite{navarro-rep-i,navarro-rep-ii}, where space proportional to a repetitiveness measure rather than raw size is the goal, as in the BWT-runs measure $r$ of the r-index~\cite{rindex_soda,rindex_jacm}, whose run-length-BWT machinery~\cite{boucher-uk-biobank} has been adapted to exploit repetitiveness of genotype data such as those we used.
+
+The \texttt{mm-repair} scheme introduced by Ferragina et al.~\cite{mmrepair} encodes the non-zero structure of a matrix $M\in\mathbb{R}^{n\times m}$ as a string and grammar-compresses it via RePair~\cite{repair}, yielding a representation $(\mathcal{C},\mathcal{R},V)$, as shown in \Cref{eq:M,eq:rules,eq:C}, supporting the right product $y=Mx$ and the left product $x^{\mathsf{T}}=y^{\mathsf{T}}M$ in $O(|\mathcal{C}|+|\mathcal{R}|)$ time and $O(|\mathcal{R}|)$ space. A subsequent study~\cite{greener} confirmed its competitive efficiency in space, time, and energy. Both prior works \cite{mmrepair,greener} parallelize multiplication by partitioning the matrix $M$ into row blocks, grammar-compressing them separately, and assigning each independent grammar to a thread.
+
+We pursue an orthogonal, GPU-specific parallelization \emph{within} a single grammar. Rather than outperform vendor kernels in raw floating-point operations, we focus on \emph{memory-constrained algorithm engineering}: maximizing \emph{in-place} computation as the device nears its physical memory limit. Since the grammar is a DAG of out-degree~2 (\cref{sec:background,sec:dag}), the right product is a bottom-up sweep (a conflict-free \emph{gather} where multiple parents read a shared child). The dual left product is a \emph{scatter} with write contention on heavily shared (highly compressed) nodes: an obstacle on GPUs.
+
+This up-sweep/down-sweep shape echoes Blelloch's work-efficient parallel prefix sum~\cite{BlellochTR90}: reduce mirrors our right-product gather, distribute the left-product scatter. But on a balanced tree every node has one parent, so Blelloch's down-sweep is a local rewrite, whereas our DAG's shared reconvergent nodes force it to \emph{accumulate} under contention. \emph{We therefore scope this paper exclusively to the right product}: it is independently valuable as the core kernel of power iteration (e.g.\ PageRank)~\cite{mmrepair,greener,francisco2022friendly} and sidesteps scatter bottlenecks.
+
+\paragraph{Streaming on a properly layered grammar.}
+
+The sweep is embarrassingly parallel \emph{within each level} (\cref{lem:antichain}), but the target regime needs more than node independence: a \emph{properly layered} grammar, where every nonterminal child sits one level below its parents (\cref{def:proper}). Then each level reads only the level below and writes the next, so traversing bottom-up every frontier is \emph{freed} once consumed and two buffers alternate read-only/write-only (\cref{lem:liveness}). We retain the compression capabilities of RePair and impose proper layering via \emph{pass-through completion} (\cref{sec:through}), inserting identity nodes that propagate values upward until they are consumed; the resulting per-level width precisely matches the live set (i.e., the number of active nonterminals).
+
+\paragraph{Scope and non-goals.}
+
+We pursue a ``compress-once, multiply-many-times'' scenario in which the input vectors are not known \emph{a priori}. The GPU serves as our sole target architecture; a host-constructed grammar feeds a level-synchronous GPU engine, which subsequently collects all throughput metrics. We evaluate performance against the 16-thread CPU \texttt{mm-repair} baseline from~\cite{mmrepair} and the NVIDIA cuSPARSE CSR kernel \cite{nvidia2026cusparse} as references. The depth, live-set width, and structural sizing metrics are architecture-independent grammar properties computed on the host during construction; these \emph{a priori} grammar features enable prediction of GPU execution costs. We exclude left multiplication and FPGA-based deployments, deferring them to future work (\cref{sec:conclusion}). We delineate in \cref{sec:setup,sec:limitations} board-dependent versus invariant metrics, and validate on two domains stressing different axes: genotype matrices, whose dense form exceeds device memory so $y=G\beta$ wins on space at time parity, and repetitive graphs, where the same monoid sweep reaches a billion-edge software graph.
+
+\section{Background: grammar-compressed matrices}
+\label{sec:background}
+
+\paragraph{CSRV.}
+
+Following the methodology in~\cite{mmrepair}, let $V[1,k]$ store the distinct non-zero values of $M$. Scanning $M$ row by row, each non-zero entry $M[i][j]=V[\ell]$ is emitted as a pair $\langle\ell,j\rangle$. A delimiter \$ terminates each row, thereby producing a string $S$ composed of value-column pairs and \$. \Cref{eq:M,eq:S} give the small matrix used as our running example (an $8\times7$ matrix with $|V|=4$ distinct non-zero values and three distinct rows, repeated to expose shared structure) and its CSRV string $S$; the value array is $V=[\,1.2,\ 2.3,\ 3.4,\ 4.5\,]$. In \cref{eq:S} we write out only the three distinct rows ($1,2,6$); the $\cdots$ mark where the repeated blocks recur: rows $3,5$ repeat row~$2$, rows $4,8$ repeat row~$1$, and row~$7$ repeats row~$6$. The pair $\langle\ell,j\rangle$ encodes value $V[\ell]$ in column $j$; for example, $\langle2,1\rangle$ is $V[2]=2.3$ in column~$1$, while the same value in column~$6$ is $\langle2,6\rangle$. Only equal values in the \emph{same} column share a pair. A row delimiter \$ closes each row.
+
+{\setlength{\arraycolsep}{3pt}
+\begin{equation}\label{eq:M}
+M=\begin{pmatrix}
+2.3 & 0 & 1.2 & 1.2 & 1.2 & 2.3 & 1.2\\
+1.2 & 4.5 & 3.4 & 1.2 & 1.2 & 2.3 & 4.5\\
+1.2 & 4.5 & 3.4 & 1.2 & 1.2 & 2.3 & 4.5\\
+2.3 & 0 & 1.2 & 1.2 & 1.2 & 2.3 & 1.2\\
+1.2 & 4.5 & 3.4 & 1.2 & 1.2 & 2.3 & 4.5\\
+0 & 4.5 & 3.4 & 2.3 & 2.3 & 0 & 4.5\\
+0 & 4.5 & 3.4 & 2.3 & 2.3 & 0 & 4.5\\
+2.3 & 0 & 1.2 & 1.2 & 1.2 & 2.3 & 1.2
+\end{pmatrix}
+\end{equation}}
+\begin{equation}\label{eq:S}
+\small
+\begin{aligned}
+S={} & \langle2,1\rangle\langle1,3\rangle\langle1,4\rangle\langle1,5\rangle\langle2,6\rangle\langle1,7\rangle\,\$ \\
+     & \langle1,1\rangle\langle4,2\rangle\langle3,3\rangle\langle1,4\rangle\langle1,5\rangle\langle2,6\rangle\langle4,7\rangle\,\$\ \cdots \\
+     & \langle4,2\rangle\langle3,3\rangle\langle2,4\rangle\langle2,5\rangle\langle4,7\rangle\,\$\ \cdots
+\end{aligned}
+\end{equation}
+
+\paragraph{Grammar.} 
+
+RePair~\cite{repair} compresses $S$ by repeatedly replacing the most frequent pair of adjacent symbols with a new nonterminal, modified to ensure it never pairs elements across a \$ boundary~\cite{mmrepair}. This process yields a set of production rules $N_i\to A_iB_i$ (where each $A_i,B_i$ is either a terminal $\langle\ell,j\rangle$ or a preceding nonterminal $N_{<i}$) and a final sequence $\mathcal{C}$ whose constituent symbols expand directly to the matrix rows. The indexing follows a strict topological ordering: $i<j$ whenever $N_i$ appears on the right-hand side of the rule for $N_j$. Executing RePair on the string $S$ of \cref{eq:S} yields:
+\begin{equation}
+\label{eq:rules}
+\small
+\mathcal{R}=\left\{
+\begin{array}{ll}
+N_1\!\to\!\langle1,4\rangle\langle1,5\rangle &
+N_2\!\to\!N_1\langle2,6\rangle \\[2pt]
+N_3\!\to\!\langle4,2\rangle\langle3,3\rangle &
+N_4\!\to\!\langle1,1\rangle N_3\\[2pt]
+N_5\!\to\!\langle1,3\rangle N_2 &
+N_6\!\to\!\langle2,1\rangle N_5 \\[2pt]
+N_7\!\to\!N_2\langle4,7\rangle &
+N_8\!\to\!N_4 N_7\\[2pt]
+N_9\!\to\!N_6\langle1,7\rangle &
+N_{10}\!\to\!\langle2,4\rangle\langle2,5\rangle \\[2pt]
+N_{11}\!\to\!N_3 N_{10} &
+N_{12}\!\to\!N_{11}\langle4,7\rangle
+\end{array}\right\}
+\end{equation}
+\begin{equation}
+\label{eq:C}
+\mathcal{C}=N_9\,\$\,N_8\,\$\,N_8\,\$\,N_9\,\$\,N_8\,\$\,N_{12}\,\$\,N_{12}\,\$\,N_9\,\$ .
+\end{equation}
+In this specific instance, each row within $\mathcal{C}$ reduces to a single nonterminal symbol; thus, $\mathcal{C}$ tracks the eight distinct row roots drawn from the set $\{N_9,N_8,N_{12}\}$. Generally, $\mathcal{C}$ can be longer and may incorporate bare terminals. Indeed, RePair stops when no more pairs of consecutive symbols appear more than once~\cite{mmrepair}. The deepest root, $N_9$, encapsulates a chain of five nested rules ($N_9\!\to\!N_6\!\to\!N_5\!\to\!N_2\!\to\!N_1$), indicating that the grammar spans five logical levels.
+
+\paragraph{The right-product sweep.} Let $\mathrm{eval}_x(\langle\ell,j\rangle)=V[\ell]\cdot x[j]$ denote the scalar contribution of an individual matrix entry to the output product. The underlying grammar transforms the multiplication $y=Mx$ into a single bottom-up evaluation pass governed by three key properties established in~\cite{mmrepair}.
+
+\begin{lemma}[Additivity of $\mathrm{eval}_x$~\cite{mmrepair}]
+\label{lem:eval}
+For any grammar rule $N_i\to A_iB_i$, the evaluation distributes additively: $\mathrm{eval}_x(N_i)=\mathrm{eval}_x(A_i)+\mathrm{eval}_x(B_i)$.
+\end{lemma}
+
+\begin{lemma}[Rows as roots~\cite{mmrepair}]
+\label{lem:rows}
+Given a compressed sequence $\mathcal{C}=N_{i_1}\$\cdots N_{i_n}\$$ and a product $y=Mx$, the output vector matches the root evaluations: $y[r]=\mathrm{eval}_x(N_{i_r})$ for every row index $r=1,\dots,n$.
+\end{lemma}
+
+\begin{theorem}[Compressed-time right product~\cite{mmrepair}]
+\label{thm:right}
+Given the grammar components $(\mathcal{C},\mathcal{R},V)$ representing a matrix $M\in\mathbb{R}^{n\times m}$ and an input vector $x\in\mathbb{R}^m$, the product $y=Mx$ can be evaluated in $O(|\mathcal{C}|+|\mathcal{R}|)$ time using $O(|\mathcal{R}|)$ words of auxiliary storage.
+\end{theorem}
+
+In practice, the CPU implementation of \cite{mmrepair} populates an auxiliary array $W[1,|\mathcal{R}|]$ such that $W[i]=\mathrm{eval}_x(N_i)$ via a single forward traversal. Because the topological numbering ensures child nodes precede their respective parents, \cref{lem:eval} resolves sequentially as $W[i]=\mathrm{cv}(A_i)+\mathrm{cv}(B_i)$, where $\mathrm{cv}(N_j)=W[j]$ and $\mathrm{cv}(\langle\ell,j\rangle)=V[\ell]x[j]$. The final answers are then extracted via $y[r]=W[\mathrm{root}_r]$, as in \cref{lem:rows}. Preserving the explicit \$ boundaries enforces a clean, row-separated representation that underpins the right-product execution; all structural modifications detailed below respect this property. \Cref{thm:right} provides the operational bound maintained by our engine, and the streaming framework covered in \cref{sec:gpu} represents its level-synchronous, parallel GPU realization.
+
+\section{The grammar as a DAG, and its levels}
+\label{sec:dag}
+
+We interpret the rules in \cref{eq:rules} as a directed acyclic graph $G$: each nonterminal maps to an internal node, each distinct terminal forms a leaf node, and directed edges span from every parent $N_i$ to its two children. Consequently, nonterminals maintain an out-degree of 2, terminals remain childless leaves, and the set of roots corresponds to the symbols active in $\mathcal{C}$. Crucially, $G$ forms a \emph{DAG rather than a tree}, as reused sub-expressions exhibit an in-degree $>1$. For instance, $N_2$ drives both $N_5$ and $N_7$, $N_3$ feeds both $N_4$ and $N_{11}$, and individual roots like $N_9,N_8,N_{12}$ serve multiple rows within $\mathcal{C}$. From the perspective of the right product, this multi-parent sharing is benign because it represents pure read-sharing.
+
+\paragraph{Levels.} We assign every node an integer level corresponding to its maximal path distance from a leaf:
+\begin{equation}
+\label{eq:level}
+\begin{aligned}
+\mathrm{lvl}(\text{terminal})&=0,\\
+\mathrm{lvl}(N_i\!\to\!A_iB_i)&=1+\max\bigl(\mathrm{lvl}(A_i),\mathrm{lvl}(B_i)\bigr).
+\end{aligned}
+\end{equation}
+% For run-length rules $N\!\to\!B^{t}$ introduced later, the height shifts as $\mathrm{lvl}(N)=1+\mathrm{lvl}(B)$. 
+Applying this definition to the rules in \cref{eq:rules} generates five distinct strata: $\{N_1,N_3,N_{10}\}$, $\{N_2,N_4,N_{11}\}$, $\{N_5,N_7,N_{12}\}$, $\{N_6,N_8\}$, and $\{N_9\}$, as illustrated in \cref{fig:dag}. The left spine $N_9\!\to\!N_6\!\to\!N_5\!\to\!N_2\!\to\!N_1$ realizes the five levels. Nodes are \emph{shared} ($N_2$ feeds $N_5$ and $N_7$; $N_3$ feeds $N_4$ and $N_{11}$; the terminal $\langle4,7\rangle$ feeds $N_7$ and $N_{12}$). Many edges skip a level by reaching a \emph{terminal} (e.g., $N_9,N_6,N_5$ each drop to a level-0 leaf). These are harmless, as terminals read the persistent input and are never freed (\cref{def:proper}). The critical edges are the \emph{nonterminal} level-skipping edges, such as \textcolor{red!70!black}{$N_8\!\to\!N_4$} (red) from level~4 to level~2. This skips a level and violates proper layering, since evaluating $N_8$ would require a value two frontiers below it. \emph{Pass-through completion} (\cref{sec:through-layer}, \cref{fig:dag}) splits exactly such edges so the streaming sweep of \cref{lem:liveness} applies.
+
+\begin{lemma}[Levels are antichains]
+\label{lem:antichain}
+If $\mathrm{lvl}(u)=\mathrm{lvl}(v) $ for distinct nodes $u\neq v$, then $G$ contains no directed edge connecting $u$ and $v$.
+\end{lemma}
+\begin{proof}
+Every valid edge in $G$ terminates at a child node possessing a strictly smaller level according to \cref{eq:level}; hence, the source and destination endpoints of an edge can never occupy the same level.
+\end{proof}
+
+\Cref{lem:antichain} serves as the core parallelization driver for our architecture: \emph{all nodes residing within a given level can be evaluated simultaneously}. The total number of levels, meaning the overall grammar depth $L=\max_i\mathrm{lvl}(N_i)$, defines the critical path of the computation and determines the number of sequential GPU kernel launches. However, node independence alone does not fully satisfy our design objectives; we require a more rigid structural configuration.
+
+\begin{definition}[Proper layering]
+\label{def:proper}
+A grammar is \emph{properly layered} if every \emph{nonterminal} child node is positioned exactly one level beneath its parent node: for any rule $N\to AB$ where $\mathrm{lvl}(N)=k$, any child that is a nonterminal must satisfy $\mathrm{lvl}=k-1$. Terminal children face no such constraints; they interface directly with the persistent inputs $x$ and $V$, which remain globally resident in device memory and are never deallocated.
+\end{definition}
+
+\begin{lemma}[Liveness / double buffering]
+\label{lem:liveness}
+When executing over a properly layered grammar, the right-product sweep requires only two active value buffers in working memory. While evaluating level $k$, the kernel reads exclusively from level $k-1$ and writes to level $k$. Upon completing level $k$, the frontier at level $k-1$ has no remaining consumers and can be safely deallocated; any root node finalized at level $k$ is immediately emitted to the output vector $y$. Consequently, the transient memory footprint is bounded by $O(\max_k w_k)$, where $w_k$ is the width of level $k$, rather than scaling as $O(|\mathcal{R}|)$, and the execution alternates between two dedicated read-only and write-only buffers.
+\end{lemma}
+\begin{proof}
+By \cref{def:proper}, all parent nodes consuming a nonterminal from level $k-1$ must reside exactly at level $k$. Once level $k$ is fully processed, all potential consumers of the level-$(k-1)$ buffer have finished execution, allowing it to be cleared. Terminal nodes are read from persistent global memory and do not depend on transient buffers.
+\end{proof}
+
+We use pass-through completion (\cref{sec:through}) to achieve proper layering, enabling the streaming, double-buffered execution model. Minimizing $L$ reduces overall kernel launches, while restricting the maximum level width $w_k$ ensures the live execution sets fit comfortably within high-speed device memory. Bounding $w_k$ is the level-wise analog of exploiting a small DAG width, as done in sparse dynamic programming on small-width DAGs~\cite {makinen-sparse-dynprog}, where the cost scales with the width of a minimum path cover (here, the per-level antichains of \cref{lem:antichain}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=.95\linewidth]{figures/fig_dag_completion}
+\caption{The grammar DAG of \cref{eq:rules} ($L=5$ levels, background bands; \cref{eq:level}). Circles represent non-terminals, while boxes represent terminal leaves. Dashed gray edges are harmless terminal level-skips (\cref{def:proper}). The lone nonterminal level-skipping edge $N_8\!\to\!N_4$ (red) violates proper layering. \emph{Pass-through completion} (\cref{sec:through-layer}) splits it through the synthesized node $P$ (orange path $N_8\!\to\!P\!\to\!N_4$), making every nonterminal edge level-adjacent.}
+\label{fig:dag}
+\end{figure}
+
+\section{A proper-layered streaming engine}
+\label{sec:through}
+
+Our central thesis is that we can fully preserve the compression advantages of the \texttt{mm-repair} format while enabling the streaming, double-buffered execution model of \cref{lem:liveness}. We achieve this by transforming the raw RePair output into a properly layered grammar during a post-processing phase. The overhead introduced consists of the synthesized pass-through nodes; yet, our experiments demonstrate that this cost remains low for highly compressible matrices and scales up only on dense, poorly compressible datasets (\cref{sec:through-exp}).
+
+\subsection{Step 1: RePair (unchanged)}
+We execute RePair on the input sequence $S$ exactly as described in~\cite{mmrepair}, processing the matrix row by row and strictly enforcing the \$ boundaries. We treat it here as an immutable black box. Its primary drawback for high-throughput parallelization is structural: its greedy, global selection of the most frequent digram yields deep graph topologies containing level-skipping edges (\cref{fig:dag}). We report the overall depth $L$ and the exact distribution of edge spans for our datasets in \cref{sec:through-exp}.
+
+\subsection{Step 2: pass-through completion (layering)}
+\label{sec:through-layer}
+Because standard RePair offers no structural layering guarantees, we explicitly add nodes to the grammar graph. For every nonterminal directed edge $N\to\dots M\dots$ where the level differential $d=\mathrm{lvl}(N)-\mathrm{lvl}(M)$ is strictly greater than 1, we intercept the edge by inserting a sequential chain of $d-1$ \emph{pass-through} nodes denoted $M=M_0,M_1,\dots,M_{d-1}$. These artificial nodes implement identity rules of the form $M_i\to M_{i-1}$, ensuring that $\mathrm{eval}_x(M_i)=\mathrm{eval}_x(M_{i-1})$. The parent node $N$ is then modified to read from $M_{d-1}$ at level $\mathrm{lvl}(N)-1$; terminal edges are left unaltered (\cref{def:proper}). 
+
+Completion runs independently per row, preserving the row roots in $\mathcal{C}$ and the alignment $y[r]=W[\text{root}_r]$; it is an offline, amortized preprocessing cost, not an online penalty (\cref{sec:through-exp}). \Cref{fig:dag} shows the result: the single level-skipping edge $N_8\!\to\!N_4$ (red) is split by one pass-through $P$ at level~3 ($P\to N_4$), so $N_8$ reads $P$ one level below and every nonterminal edge becomes level-adjacent (\cref{lem:liveness}). The pass-through is not overhead but bookkeeping: it \emph{is} $N_4$ held live across level~3 for its higher consumer $N_8$, so each band's width is exactly the live set. \Cref{fig:trace} replays this as a numeric, round-by-round computation.
+
+Such insertions are not wasteful: a pass-through crossing level $k$ is a value \emph{alive but unconsumed} there, so the completed width $w_k$ tracks the live set and the buffers hold exactly the values in flight (on FPGAs these map to pipeline registers; on GPUs, to forwarded frontier slots). Worst-case completion adds $O(|\mathcal{R}|\,L)$ nodes, but the actual inflation follows the edge-span distribution, which we measure empirically (\cref{sec:through-exp}).
+
+\paragraph{Depth still matters, but is not enough.}
+
+Grammar height governs both the sequential launch count $L$ and the length of individual pass-through chains. Therefore, pre-balancing to a logarithmic height bound of $O(\log n)$~\cite{ganardi,balancing-urbina} is an attractive complementary optimization. We do not apply it in this work (our pipeline consumes the raw RePair grammar unchanged), and we stress that it would not replace completion. Structural balancing bounds only the \emph{depth}, not the active \emph{live set}, meaning a balanced grammar can still host nonterminal edges that skip multiple levels. Because only explicit completion guarantees compliance with the streaming model, balancing is orthogonal to our contribution; we leave its integration to future work (\cref{sec:conclusion}).
+
+\subsection{Step 3: the streaming, double-buffered sweep}
+\label{sec:gpu}
+
+During the offline phase, we evaluate \cref{eq:level} on the completed grammar and lay out the nodes level by level: the rules are concatenated into a single flat array, partitioned by a per-level offset array so that the rules of level $k$ occupy one contiguous block. Each node's children are encoded as absolute offsets relative to the \emph{preceding frontier array}, supplemented by structural tags indicating the node type: terminal, nonterminal, run-length, or pass-through. We sort the nodes within each level to ensure contiguous, coalesced memory accesses across executing warps. The execution of $y=Mx$ then proceeds via the loop detailed in \cref{lst:kernel}, utilizing two alternating buffers, $\mathit{prev}$ and $\mathit{cur}$. For each level $k=1,\dots,L$, a single kernel launch reads from $\mathit{prev}$ (representing level $k-1$) and writes into $\mathit{cur}$ (representing level $k$). The host swaps the buffer pointers between iterations, ensuring they alternate between read-only and write-only modes (\cref{lem:liveness}). The maximum transient memory footprint is bounded by $O(\max_k w_k)$.
+
+To prevent warp divergence, we handle all node variants using a branch-free, fused multiply--add sequence. We allocate a dedicated \emph{zero terminal} at $T[0]=0$ and encode all child references as signed array indices: a non-negative index $c$ indicates a lookup in the previous frontier buffer $\mathit{prev}[c]$, whereas a negative index $c$ routes the lookup to the persistent terminal array $T[-c-1]$, where $T[p]=V[\ell_p]\,x[j_p]$. Every node can then be evaluated using the unified expression $\mathit{cur}=\mathrm{coeff}\cdot\mathrm{cv}(\mathit{left})+\mathrm{cv}(\mathit{right})$, where the tuple parameters are assigned as follows: $(\mathrm{coeff},\mathit{right})=(1,B)$ for standard binary rules $N\to AB$; $(1,\text{zero})$ for pass-through operations $N\to M$; and $(t,\text{zero})$ for run-length rules $N\to B^{t}$, giving $\mathrm{eval}_x(N)=t\cdot\mathrm{eval}_x(B)$ from a single child read. The last case never arises for us: within a row the column index is distinct at every position, so no pair (hence no digram) can repeat and RePair emits only binary productions; the engine nonetheless supports it at no extra cost for run-length or balanced grammar constructions (\cref{sec:conclusion}).
+
+\begin{lstlisting}[style=kernel,caption={Streaming round: read prev (level k-1), write cur (level k); host swaps the buffers after each launch. cv(c)={prev[c]} if c>=0 else T[-c-1]. A node of C is emitted into y the moment its level is computed (atomic add), then freed.},captionpos=b,label={lst:kernel}]
+kernel round(level k, prev, cur):  # one thread t per node of level k
+ r = rules[k][t]
+ cur[t] = r.coeff * cv(r.left) + cv(r.right) # one fused MAD, no branch
+kernel emit(level k, cur):     # one thread per C-occurrence at level k
+ atomicAdd(&y[row[e]], cur[pos[e]])      # emit on the spot, then free
+# host: zero y; for k = 1..L { round(k,prev,cur); emit(k,cur); swap(prev,cur) }
+\end{lstlisting}
+
+\Cref{fig:sweep} illustrates the execution on three consecutive levels of the running example ($L=5$; \cref{fig:trace} runs it in full). The round kernel is a conflict-free gather: threads write distinct slots of $\mathit{cur}$, and concurrent reads of shared children in $\mathit{prev}$ are harmless. A root of $\mathcal{C}$ is emitted into $y$ by atomic addition the instant its level is finalized, then discarded; this keeps roots from propagating upward, so $w_k$ stays minimal rather than inflating to $\Theta(\text{rows})$. Since the kernel reads only $\mathit{prev}$, that buffer can target on-chip shared memory, and pass-through completion keeps every lookup on the adjacent level rather than scattering across the DAG.
+
+The sequential launch count is bounded by $L$ (which height-balancing would cap logarithmically); because per-round width tapers toward the roots, occupancy peaks where most of the reduction happens.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=.85\linewidth]{figures/fig_sweep}
+\caption{The double-buffered, level-synchronous sweep (\cref{lst:kernel}), shown for the first three levels ($k=1,2,3$). Buffers $\alpha,\beta$ swap roles every level. \textcircled{1} double buffering; \textcircled{2} persistent terminals; \textcircled{3} branch-free fused MAD; \textcircled{4} emit-on-the-spot.}
+\label{fig:sweep}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+% \resizebox{0.78\linewidth}{!}{\includestandalone{figures/fig_trace}}
+\includegraphics[width=.95\linewidth]{figures/fig_trace}
+\caption{The DAG grammar execution for input $x=[\,2,1,1,2,1,1,1\,]^{\top}$ and $V=[\,1.2,2.3,3.4,4.5\,]$. Terminals evaluate as $\langle\ell,j\rangle \mapsto V[\ell]\cdot x[j]$. Distinct row roots $N_{12},N_8,N_9$ evaluate to $19.3,20.7,12.9$. Ellipses ($\ldots$) elide repeated rows.}
+\label{fig:trace}
+\end{figure}
+
+\subsection{Experimental results}
+\label{sec:through-exp}
+
+We evaluate the engine on large genotype datasets (GB10 platform, \cref{sec:setup}): computing a polygenic risk score is the right product $y=G\beta$ \cite{choi2020tutorial}. Biobank-scale panels (hundreds of thousands of samples, millions of variants) exceed physical memory, which is why genomics relies on specialized run-length/BWT-based haplotype formats~\cite{durbin2014pbwt,boucher-uk-biobank}. Our matrices $G$ come from human chromosomes 22, 21, and 20 (from the 1000 Genomes Project~\cite{1000genomes2015}): individuals as rows, SNPs as columns in genomic order, each cell in $\{0,1,2\}$; adjacent columns are in heavy linkage disequilibrium (LD), with repetitiveness that RePair exploits. We use two scales, a $10^5$-variant subset and the full per-chromosome sequence, plus synthetic panels from the coalescent with recombination via \texttt{msprime}~\cite{msprime2016,msprime2022}. The recombination-to-mutation ratio of these synthetic panels tunes LD block structure (low recombination: long blocks, high LD, highly compressible; high recombination: the opposite), each reproducible from a fixed seed. We do not process a full biobank cohort (\cref{sec:limitations}); our largest synthetic (\texttt{crossover\_synth}, $10{,}000$ individuals $\times$ $700{,}000$ variants, $1.00$\,G non-zeros) serves as a scale indicator.
+
+\Cref{tab:geno_through} gives the grammars' structural parameters ($|\mathcal{R}|$, depth $L$, max frontier width $w^{*}$, pass-through inflation $+\text{pt}$). \Cref{tab:geno_time} gives the average time per right product (over 100 vectors) for our GPU streaming engine (\textbf{GPU}); a parallel \textbf{OpenMP} CPU sweep ($20$ threads) and a \textbf{sequential} CPU one; the original \texttt{mm-repair} (\texttt{re32mm}) at 1 and 16 threads; and vendor \textbf{cuSPARSE} SpMV, with $\times$seq representing the GPU speed-up over sequential \texttt{mm-repair}. \Cref{tab:geno} adds device footprint and energy versus cuSPARSE.
+
+\begin{table}[t]
+\caption{Structural figures, measured on the GB10 node. $|\mathcal{R}|$: RePair non-terminals; $L$: grammar depth; $w^{*}$: maximum live width after completion (the streaming-buffer size); $+\text{pt}$: pass-through nodes added by completion. $\text{K}=10^{3}$, $\text{M}=10^{6}$.}
+\label{tab:geno_through}
+\centering\footnotesize
+\setlength{\tabcolsep}{4pt}
+\input{tables/tab_geno_through}
+\end{table}
+
+\paragraph{Depth and completion.}
+
+The critical depth $L$ remains low across all test configurations, ranging from 20 to 30 tiers. Crucially, the maximum streaming frontier width $w^{}$ stays well below the base rule count $|\mathcal{R}|$ (about one third on the real chromosomes, up to one half on the synthetics), enabling the dual buffers to fit within device memory. Pass-through nodes are added in strict proportion to the underlying edge-span profiles (\cref{sec:through-layer}). Because the genotype alphabet is discrete and small (${0,1,2}$), terminal evaluation is cheap and does not bound performance, leaving traversal and emission atomics as the likely dominant kernel cost. Utilizing CUDA Unified Memory (\texttt{cudaMallocManaged}) prevents out-of-memory errors on the host during graph construction.
+
+\paragraph{Time vs.\ \texttt{mm-repair} and cuSPARSE.}
+
+Our GPU streaming engine outperforms the single-threaded CPU \texttt{mm-repair} reference across all test cases, achieving speedups ranging from $5.4\times$ to $15.5\times$. When compared against the heavily optimized, vendor cuSPARSE CSR kernel, our single-vector engine maintains competitive parity on the real chromosomes, from $1.41\times$ faster to $1.20\times$ slower than cuSPARSE. Furthermore, our engine outperforms cuSPARSE on synthetic configurations characterized by high linkage disequilibrium or expanded sample sizes (achieving up to a $4.2\times$ performance improvement on \texttt{synth\_ind\_large}), where the underlying compression factor is at its maximum. Thus, the core contribution of our grammar engine lies in its radical reduction of physical memory requirements rather than raw floating-point throughput.
+
+\begin{table*}[t]
+\caption{Genotype average time per right matrix--vector product (ms/vector) on the GB10 node.}
+\label{tab:geno_time}
+\centering\footnotesize
+\input{tables/tab_geno_time}
+\end{table*}
+
+\paragraph{Space and energy vs.\ cuSPARSE.}
+
+\Cref{tab:geno} reports analytic device footprint, time, and energy of the engine versus cuSPARSE CSR SpMV. The engine is consistently smaller and more energy-efficient, especially on highly repetitive or high-LD matrices. We observe a $4.0\times$ to $4.7\times$ footprint reduction across the real chromosomes, which correlates with lower energy usage (up to $35\%$ on full chromosome~21). This efficiency stems from arithmetic operations running directly on the compressed grammar, without materializing uncompressed vectors. On synthetics, the LD level sets the scaling: high LD (recombination rate $10^{-9}$) gives a $7.3\times$ smaller space and beats cuSPARSE by $3.6\times$ in time and $4.6\times$ in energy. Conversely, low LD (recombination rate $10^{-7}$) drops to $3.5\times$ space and runs at time parity. Widening the cohort (\texttt{synth\_ind\_large}, $10{,}000$ individuals) reaches $7.9\times$ smaller space, $4.1\times$ faster execution, and $4.7\times$ less energy. For biobank-scale problems, this memory advantage decides whether a matrix fits in high-speed GPU memory (\cref{fig:space}); batched throughput is examined below.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=.95\linewidth]{figures/fig_space}
+\caption{Memory footprint: Grammar Engine vs. cuSPARSE CSR on log-log scale. The dashed line indicates the standard 24\,GB commodity-GPU memory limit. Even at the largest scale (\texttt{crossover\_synth}, $1.00$\,G non-zeros) cuSPARSE's CSR ($8.03$\,GB) still fits, but the Grammar Engine's $0.96$\,GB peak is $8.2\times$ smaller.}
+\label{fig:space}
+\end{figure}
+
+\paragraph{Pushing to billion-nonzero scale.}
+
+To probe the largest-scale regime, we generated a large synthetic matrix (\texttt{crossover\_synth}, $10{,}000 \times 700{,}000$ genotypes, $1.00$ billion non-zeros). In standard CSR representation, this matrix requires $8.03$\,GB of GPU memory; on the GB10's unified $119$\,GiB pool, cuSPARSE runs, but at $48.38$\,ms per vector and $1976$\,mJ/vec: the highest single-vector cost of any matrix we test.
+
+In contrast, our Grammar Engine processes the matrix entirely in its compressed representation, requiring an analytic device footprint of only $1.01$\,GB (measured peak: $0.96$\,GB), which is $8.0\times$ smaller than CSR. Once constructed, the engine evaluated the right product in $20.09$\,ms per vector ($14.5\times$ faster than the sequential CPU reference and $2.41\times$ faster than cuSPARSE), with an energy consumption of $628$\,mJ/vec ($3.15\times$ less; see crossover point in \cref{fig:space}). At this scale, the advantage is no longer confined to space but also to time and energy; at a true biobank scale (where the uncompressed matrix exceeds device memory), it is what keeps the matrix resident at all.
+
+\begin{table*}[t]
+\caption{Genotype right product. Single-vector engine vs.\ cuSPARSE CSR SpMV in unified memory on the GB10 node. $\text{nnz}$: non-zeros; $\text{M}=10^{6}$; $\text{K}=10^{3}$.}
+\label{tab:geno}
+\centering\footnotesize
+\input{tables/tab_geno}
+\end{table*}
+
+\paragraph{Batched evaluation (SpMM).}
+
+Batching $B$ right-hand vectors ($Y=MX$, the kernel of block power/Krylov iteration~\cite[\S7.3, \S10.1, \S10.3.6]{golub-van-loan-matrix-book}) amortizes grammar traversal but does not fundamentally alter the results. With both sides given their best configuration (the engine's best $B$, and cuSPARSE's best of \texttt{ALG\_DEFAULT}/\texttt{CSR\_ALG2}/\texttt{CSR\_ALG3}), cuSPARSE leads by $1.7\times$ to $10.9\times$. This gap is narrowest on the full real chromosomes ($1.7$ to $2.4\times$) and widest on the least compressible synthetics ($7.2$ to $10.9\times$). As with the single-vector case, the grammar's lower operation count does not offset the vendor kernel's raw efficiency; our advantage lies in reduced memory. Full per-dataset batched times and the algorithm-sweep that justifies \texttt{CSR\_ALG3} as the vendor baseline are in \cref{app:batched}.
+
+\section{Beyond $(+,\times)$: a monoid-homomorphism engine}
+\label{sec:semiring}
+
+Our engine does not rely on full-ring axioms, so the same schedule that computes the genotype product also evaluates graph reachability, with no change to the construction pipeline in \cref{sec:through}. Correctness over the shared DAG needs only that the combine $\oplus$ be \emph{associative} (a monoid): then a reused nonterminal's value is invariant to how its sub-expansion is parenthesized, so the intra-level parallelism of \cref{lem:antichain} and the liveness of \cref{lem:liveness} still hold. Commutativity is not required, since RePair preserves symbol order and never pairs across row boundaries. The leaf map (non-zero terminals) is the multiplicative $\otimes$, and unmapped (zero) coefficients are the $\oplus$-identity.
+
+Our engine can hence evaluate \emph{any} arbitrary monoid homomorphism over the grammar without structural adjustments to the schedule. Variations are limited to swapping out the low-level leaf/combine/emit device primitives via a unified configuration struct (\texttt{SEMIRING=\{plustimes,boolean,tropical\}}). Two alternative algebraic semirings are of immediate practical interest: the \emph{Boolean} semiring ($\oplus={}$\textsc{or}, $\otimes={}$\textsc{and}), where a single matrix--vector pass computes a breadth-first search (BFS) frontier or reachability step; and the \emph{Tropical} semiring ($\oplus=\min$, $\otimes={}+$), where a pass is a single Bellman--Ford relaxation, the core of single-source shortest paths and, when batched, multi-source shortest paths. This recasts graph adjacency compression as an enabler, rather than an obstacle, for matrix-algebraic graph queries (other examples in the literature include WebGraph~\cite{webgraph,webgraph_rust} and Zuckerli~\cite{zuckerli} referentiation/intervalisation codes for adjacency lists which allow for computation-friendly web-graph compression for adjacency--vector products~\cite{francisco2022friendly,greener}, $k^2$-tree representations exploiting empty regions of the adjacency matrix~\cite{k2tree-spire}\cite[\S9.2.1]{navarro_book}, and $k^2$-tree/wavelet-tree Boolean-matrix algebras for regular path queries over the compressed adjacency~\cite{rpq-k2tree-vldbj,rpq-compact-vldbj,time-space-rpq,arroyuelo2026boosting}).
+
+This generalization reinforces our primary thesis: the same memory optimization that justifies grammar compression for genotypes (storing and operating on a highly compressed representation when uncompressed data structures exceed device limits) applies to any highly-repetitive graph topology. To demonstrate this capability, we evaluate the Boolean and Tropical semirings on five adjacency relation matrices built from Wikidata (the same Zenodo collection~\cite{time-space-rpq}), chosen to span scales, edge densities, and topologies: \texttt{wd\_sports\_team} (\texttt{P54}, member of sports team, $332{,}121 \times 29{,}854$), \texttt{wd\_cast\_member} (\texttt{P161}, cast member, $173{,}977 \times 144{,}095$), \texttt{wd\_citizenship} (\texttt{P27}, country of citizenship, $2{,}874{,}250 \times 2{,}556$), \texttt{wd\_occupation} (\texttt{P106}, occupation, $3{,}459{,}933 \times 10{,}610$), and \texttt{wd\_subclass\_of} (\texttt{P279}, subclass of, $1{,}487{,}709 \times 73{,}417$). 
+
+The first three are bipartite, entity-to-entity relations with varying widths and degrees of repetition. The last two add the largest edge set and an ontology-hierarchy (rather than bipartite) topology. Because Wikidata subjects \cite{wikidata-survey,wikidata-cacm,wikidata-making} number in the millions, these matrices are far too large to materialize densely; we thus build them directly from the sparse per-source edge list into the CSRV/RePair grammar without ever forming the uncompressed matrix. Dataset characteristics and grammar structure (averaged over 50 iterations, CPU references verified bit-for-bit) are centralized in \cref{tab:graph_struct}, and runtime/space results in \cref{tab:graph}. We then push the space argument to the graph scale (\cref{tab:graph_scale}) for the two largest Wikidata relations and for the billion-edge Software Heritage graph \cite{swh_dag}.
+
+Compressibility tracks per-source repetition, as with the genotype matrices of \cref{sec:through-exp}. RePair compresses \texttt{wd\_citizenship}'s $3.06$M edges to just $3{,}295$ rules and the ontology hierarchy \texttt{wd\_subclass\_of}'s $2.02$M edges to $6{,}825$ rules. Both are relations in which each source shares its target structure with many others. \texttt{wd\_sports\_team} and \texttt{wd\_occupation} compress moderately well ($70{,}158$ and $41{,}544$ rules from $1.14$M and $4.60$M edges respectively), while \texttt{wd\_cast\_member} (where each film has a largely distinct cast) compresses least ($51{,}677$ rules from $1.03$M edges, the only relation whose device footprint fails to beat CSR). Grammar depth ranges $L=5$ to $8$ and pass-through completion overhead ranges $11\%$ to $21\%$ across all five relations (\cref{tab:graph_struct}). None collapses to a flat, near-uncompressed structure that a degenerate, extremely narrow relation can produce, since all five expose genuine per-source repetition at this scale.
+
+Operating directly on these compressed DAG topologies, all verified bit-for-bit, the engine's analytic device footprint undercuts cuSPARSE CSR on four of the five relations ($21\%$ to $33\%$ smaller on \texttt{wd\_sports\_team}, \texttt{wd\_citizenship}, \texttt{wd\_occupation}, and \texttt{wd\_subclass\_of}). However, it is \emph{larger} on the poorly repetitive \texttt{wd\_cast\_member} ($11.12$\,MB vs.\ $10.24$\,MB). This matches the failure mode seen on badly-compressing genotype instances (\cref{sec:through-exp}): once a relation lacks high repetitiveness, the per-rule bookkeeping overhead of the layered grammar outweighs the modest structural savings. Single-vector times remain within a small factor of cuSPARSE (Boolean $0.09$ to $0.73$\,ms vs.\ $0.06$ to $0.50$\,ms) while outrunning the sequential CPU reference by $17\times$ to $34\times$. The batched $B{=16}$ sweeps amortize the traversal further (e.g., Boolean \texttt{wd\_sports\_team} drops from $0.092$ to $0.051$\,ms/vector; \cref{tab:graph}). These results confirm that the space advantage is real but \emph{conditional on genuine per-source repetitiveness}. It is not an inherent property of grammar compression, but a measurable structural fact about each relation.
+
+\paragraph{Semiring-native baseline (GraphBLAS).}
+
+Since no vendor \emph{dense} kernel exists for these semirings, we compare against SuiteSparse:GraphBLAS~\cite{graphblas}, the standard semiring-native library, running the same operation (\texttt{lor\_land}/\texttt{min\_plus} \texttt{mxv}) on the \emph{uncompressed} matrix with 20 threads (\cref{tab:graph}). Operating on the \emph{compressed} grammar, our GPU engine beats GraphBLAS on \emph{all five} Boolean sweeps. On the Tropical semiring, it is faster on \emph{all five} relations by roughly $3\times$ to $7\times$ (e.g., \texttt{wd\_occupation}: $0.73$ vs.\ $3.57$\,ms). A GPU-native cuGraph BFS/SSSP reference is discussed in \cref{sec:limitations}; it executes a \emph{full} traversal rather than a single mat-vec, making it an end-to-end reference rather than a per-mat-vec baseline.
+
+\paragraph{Scaling to 10M--166M edges.}
+
+To probe the space argument at scale, we build the two largest single Wikidata relations, bracketing the compressibility spectrum: the narrow categorical \texttt{wd\_country} ($10.1$M edges) and the citation network \texttt{wd\_cites\_work} ($166.7$M edges), both verified bit-for-bit (\cref{tab:graph_scale}). Their dense forms ($2.2$\,GB, $10.8$\,TB) are unusable, making the sparse-to-grammar construction (\cref{sec:semiring}) essential to make them addressable. 
+
+Two effects stand out. Compressibility tracks per-source repetition: \texttt{wd\_country} collapses to $2{,}002$ rules ($\mathbf{16.8\times}$ under CSR serialized), whereas \texttt{wd\_cites\_work} barely compresses ($3.1\times$) due to its largely unique citation lists. More subtly, the \emph{device-resident} advantage is far smaller than the serialized one. The sweep still materializes one root per row plus the persistent terminal array, a $\Theta(\text{rows})$ cost. Consequently, even the $16.8\times$-compressible \texttt{wd\_country} is only $\sim\!25\%$ smaller than CSR in device bytes, and \texttt{wd\_cites\_work} is essentially tied. At graph scale, the grammar's decisive advantage lies in its \emph{serialized/transfer} size and in avoiding the dense matrix construction, rather than device-resident bytes, which are lower-bounded by the per-row root/terminal structure. This marks an honest boundary complementary to the genotype scale regime (\cref{sec:through-exp}), where the engine's device footprint stays several-fold below CSR even as both fit.
+
+\paragraph{A billion-edge software graph (Software Heritage).}
+
+Our largest instance, and the only one from the \emph{software} domain, is the Software Heritage (SWH) graph~\cite{swh_dag}: the global Merkle-DAG of publicly archived source code \cite[\S2.1]{swh-ecosystems-book}\cite{swh_cacm,di-cosmo-archiving}. It is repetitive by construction. Source code evolves by small edits over many revisions and forks that reuse the same files and directory subtrees across the archive: exactly the redundancy RePair exploits. From the \texttt{2021-03-23-popular-3k-python} export, we build a single boolean adjacency of $45.7$M nodes and $1.22$ billion edges (\cref{tab:graph_scale}). Its dense form ($\approx\!261$\,TB) cannot be materialized, and even a boolean CSR needs $\approx\!10$\,GB. RePair compresses it to a $30.3$M-rule grammar serialized to $490$\,MB, representing a $21\times$ reduction under CSR. 
+
+Crucially, and unlike \texttt{wd\_cites\_work}, the advantage here \emph{also} survives device-resident ($2.79$\,GB, $3.7\times$ under CSR), because SWH is simultaneously highly repetitive \emph{and} dense enough ($\approx\!27$ edges/row) to amortize the $\Theta(\text{rows})$ root/terminal cost. Structurally, its grammar is deep and wide ($L=70$, $w^{*}=8.98$M), presenting a distinct stress test compared to the shallow bipartite relations ($L=5$ to $8$). Correctness is verified bit-for-bit against the CPU reference on the \emph{full} $45.7$M-node, $1.22$\,billion-edge graph (Boolean semiring; GPU vs.\ sequential and OpenMP CPU sweeps, $\text{max\_abs\_diff}=0$). WebGraph~\cite{webgraph,webgraph_rust} stores it slightly smaller ($2.485$ bits/edge) but does not evaluate a semiring mat-vec on the compressed form on a GPU.
+
+\begin{table*}[t]
+\caption{Largest graph relations that bracket the compressibility spectrum: two Wikidata relations and the billion-edge Software Heritage software graph. REANS: serialized grammar; CSR / eng.\ dev.: analytic device footprint of cuSPARSE CSR and the engine; Bool: single-vector Boolean time (engine / cuSPARSE), GB10 node. Dense forms ($2.2$\,GB / $10.8$\,TB / $261$\,TB) are unusable.}
+\label{tab:graph_scale}
+\centering\footnotesize
+\input{tables/tab_graph_scale}
+\end{table*}
+
+\begin{table*}[t]
+\caption{Graph right product under Boolean and Tropical semirings across five Wikidata relations on the GB10 node (single-vector time, slash-separated per method: Boolean CSR/eng/GB, Tropical eng/GB; batched engine-only at $B{=}16$; footprint columns analytic CSR/eng). CSR: uncompressed cuSPARSE (Tropical: no vendor kernel, N/A). GB: SuiteSparse:GraphBLAS, 20 threads (\texttt{lor\_land}/\texttt{min\_plus} \texttt{mxv}, uncompressed). Dimensions in \cref{sec:semiring}; structure in \cref{tab:graph_struct}.}
+\label{tab:graph}
+\centering\footnotesize
+\input{tables/tab_graph}
+\end{table*}
+
+\section{Experimental setup}
+\label{sec:setup}
+
+All metrics, including host-side grammar decomposition, structural analysis, and GPU execution throughput profiling, are collected on a device exclusively reserved for our experiments and equipped with an NVIDIA GB10 Grace–Blackwell superchip architecture. This hardware platform runs Ubuntu 24.04 LTS (Linux kernel 6.17) and features a 20-core Arm CPU (aarch64 architecture) tightly coupled to 119 GiB of unified coherent memory shared over a high-bandwidth NVLink-C2C interconnect. The onboard GPU hosts 48 streaming multiprocessors (SMs) targeting compute capability 12.1 ({\tt sm\_121}). The software stack comprises the CUDA 13.0 toolkit, g++ 13.3, and CMake 3.28. Energy is measured from the on-die power telemetry via NVML: we sample {\tt nvmlDeviceGetTotalEnergyConsumption} on the Blackwell device before and after a sustained evaluation loop (repeated until at least 1.5 s of steady-state execution) and divide the energy delta by the number of products, reporting GPU energy in mJ per vector (and, over the same interval, average power); these figures are subject to the profiling variance noted in \cref{sec:limitations}.
+
+The most consequential architectural trait of the GB10 platform for our implementation is its fully unified and coherent physical memory layout: the host CPU and destination GPU share the 119 GiB pool over the NVLink-C2C bus. This eliminates explicit host-to-device memory copies ({\tt cudaMemcpy}) for both the base grammar and the active streaming frontiers (\cref{lem:liveness}), validating the use of compressed formats to save memory footprint and bandwidth. We allocate the frontier arrays via {\tt cudaMallocManaged}.
+
+\paragraph{Correctness.} Every algorithm and configuration we report is checked on a shared input vector against independent implementations, which must agree: the host CPU reference sweep (sequential and 20-thread OpenMP), the \texttt{mm-repair} CPU grammar mat-vec, the materialized-CSR path (cuSPARSE for $(+,\times)$ and Boolean, plus a CPU SpMV / min-plus over the \emph{same} grammar-reconstructed matrix), the batched (SpMM) engine and cuSPARSE kernels, and, for the graph semirings, SuiteSparse:GraphBLAS ($\lor\!\land$ and $\min,+$). Across all genotype and Wikidata relations these agree within float precision for $(+,\times)$ and bit-for-bit for Boolean and Tropical; the full Software Heritage graph ($45.7$M nodes, $1.22$\,billion edges) is verified bit-for-bit against both the CPU reference sweep and the materialized CSR.
+
+\section{Limitations}
+\label{sec:limitations}
+
+We delineate the main boundaries of the current evaluation.
+
+\begin{enumerate}
+    \item \emph{Evaluation scale.} Full biobank-scale matrices (hundreds of thousands of individuals) are our target but are modeled here by synthetics up to $10\text{K}$ samples. Whether pass-through inflation and buffer sizing remain stable at full scale without hurting occupancy remains to be verified.
+    \item \emph{Host-side construction cost.} The compressed format carries a one-time offline cost (\cref{tab:build}: the RePair build, plus milliseconds of completion and level-bucketing), amortized after a few hundred products and thus negligible in the many-vector regimes we target.
+    \item \emph{Batched throughput.} cuSPARSE's tuned SpMM outperforms our engine across all configurations ($1.7\times$ to $10.9\times$); our advantage remains the small memory footprint.
+    \item \emph{Graph verification.} The space advantage over CSR is conditional on the relation RePair-compressing (\cref{tab:graph_struct,tab:graph}) and reverses on poorly repetitive ones (\texttt{wd\_cast\_member}); our GraphBLAS comparison is a single \texttt{mxv}, so an end-to-end evaluation (fixpoint-iterated reachability/SSSP and batched multi-source, against the cuGraph BFS/SSSP reference) is left to future work.
+    \item \emph{Profiling variance.} Because the GB10 shares unified memory with the host (\cref{sec:setup}), timings and energy vary with OS scheduling; the structural metrics ($L$, $w^{*}$, pass-through counts; \cref{tab:geno_through,tab:graph_struct}) are instead invariant, architecture-independent grammar traits.
+\end{enumerate}
+
+\section{Conclusion and future work}
+\label{sec:conclusion}
+
+We demonstrated that a right matrix--vector product over a grammar-compressed matrix is a conflict-free, level-synchronous DAG gather, and that the efficient parallel model is a \emph{properly layered} one: the sweep streams through two alternating buffers, freeing each frontier immediately after use (\cref{lem:liveness}). We preserve RePair's compression and obtain proper layering by post-processing pass-through completion.
+Evaluated on large genotype matrices against vendor cuSPARSE CSR, the engine's primary advantage is \emph{space}: on real chromosomes a $4.0\times$ to $4.7\times$ smaller device footprint at single-vector parity ($1.41\times$ faster to $1.20\times$ slower) and lower energy, rising to $7.9\times$ smaller and $4.1\times$ faster on highly compressible synthetics, matching biobank-scale polygenic scoring ($y=G\beta$) where uncompressed matrices exceed device memory. Needing only an associative combine, the same engine carries this space argument from genotypes to repetitive graphs, up to a billion-edge software graph.
+
+Extensions include: scaling to full biobank cohorts where CSR exceeds GPU memory; broadening the semiring framework (\cref{sec:semiring}) with GraphBLAS/cuGraph benchmarks; left multiplication ($x^{\mathsf{T}}=y^{\mathsf{T}}M$) via a pull-based reduction; integrating height-balancing~\cite{ganardi,balancing-urbina} to shorten $L$; exploring alternative constructions via recompression~\cite{jez,recompression}; and targeting FPGA pipelines.
+% \section*{Acknowledgments}
+% TODO
+
+\appendix
+
+\section{Batched evaluation (SpMM)}
+\label{app:batched}
+
+\Cref{tab:geno_spmm} reports the engine's optimal batch configurations (best batch $B$, averaged over $40$--$50$ iterations, verified against the single-vector reference) against the vendor \texttt{cusparseSpMM} kernel under its own most competitive parameters. We sweep \texttt{ALG\_DEFAULT}, \texttt{CSR\_ALG2}, and \texttt{CSR\_ALG3} (abbreviated \texttt{a2}/\texttt{a3}) because the first two degrade severely as $B$ scales up on short, ultra-wide matrix shapes, whereas \texttt{CSR\_ALG3} stays stable; \cref{fig:batched} plots this degradation on \texttt{geno22full}, justifying \texttt{CSR\_ALG3} as our vendor baseline. With both environments optimized, cuSPARSE leads by $1.7\times$ to $10.9\times$ ($\times$cuS in the table), the gap narrowing on the full real chromosomes and widening on the least compressible synthetics.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=.95\linewidth]{figures/fig_batched}
+\caption{Batched right product throughput (ms/vector) vs. batch size $B$ on \texttt{geno22full}.}
+\label{fig:batched}
+\end{figure}
+
+\begin{table*}[t]
+\caption{Batched right product (SpMM, $Y=MX$): best per-vector time (ms/vector) on the GB10 node.}
+\label{tab:geno_spmm}
+\centering\small
+\input{tables/tab_geno_spmm}
+\end{table*}
+
+\section{Additional tables}
+\label{app:tables}
+
+\Cref{tab:build} gives the two-part host construction cost per genotype matrix, and \cref{tab:graph_struct} the structural figures of the five Wikidata relations.
+
+\begin{table*}[t]
+\caption{Two-part host construction cost per genotype matrix on the GB10 node. \emph{grammar RePair}: one-time offline \texttt{mm-repair} build (shared with the CPU baseline); \emph{$+$pt build}: the engine's marginal completion step (pass-through, level-bucketing, terminal compaction). $\approx$\,mat-vecs: $+$pt build over one right-product time (\cref{tab:geno}), i.e.\ the products after which it amortizes.}
+\label{tab:build}
+\centering\small
+\input{tables/tab_build}
+\end{table*}
+
+\begin{table*}[t]
+\caption{Structural figures for the five Wikidata relation matrices, measured on the GB10 node (columns as in \cref{tab:geno_through}; total: layered rules after pass-through completion; dimensions in \cref{sec:semiring}).}
+\label{tab:graph_struct}
+\centering\footnotesize
+\setlength{\tabcolsep}{4pt}
+\input{tables/tab_graph_struct}
+\end{table*}
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}

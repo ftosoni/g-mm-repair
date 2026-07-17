@@ -1,0 +1,24 @@
+##### yago_plays_for #####
+cuGraph bool [BFS (full reachability)]: 7.6029 ms/traversal  (nodes=91397+cols, nnz=412388)
+cuGraph tropical [SSSP (single-source shortest paths)]: 7.4218 ms/traversal  (nodes=91397+cols, nnz=412388)
+##### yago_is_citizen_of #####
+cuGraph bool [BFS (full reachability)]: 5.4432 ms/traversal  (nodes=45823+cols, nnz=46060)
+cuGraph tropical [SSSP (single-source shortest paths)]: 5.8688 ms/traversal  (nodes=45823+cols, nnz=46060)
+##### yago_acted_in #####
+cuGraph bool [BFS (full reachability)]: 5.7773 ms/traversal  (nodes=26665+cols, nnz=127513)
+cuGraph tropical [SSSP (single-source shortest paths)]: 6.6461 ms/traversal  (nodes=26665+cols, nnz=127513)
+##### wd_sports_team #####
+cuGraph bool [BFS (full reachability)]: 9.2546 ms/traversal  (nodes=332121+cols, nnz=1136249)
+cuGraph tropical [SSSP (single-source shortest paths)]: 10.8558 ms/traversal  (nodes=332121+cols, nnz=1136249)
+##### wd_cast_member #####
+cuGraph bool [BFS (full reachability)]: 10.1303 ms/traversal  (nodes=173977+cols, nnz=1033124)
+cuGraph tropical [SSSP (single-source shortest paths)]: 9.4042 ms/traversal  (nodes=173977+cols, nnz=1033124)
+##### wd_citizenship #####
+cuGraph bool [BFS (full reachability)]: 35.5593 ms/traversal  (nodes=2874250+cols, nnz=3063058)
+cuGraph tropical [SSSP (single-source shortest paths)]: 38.7217 ms/traversal  (nodes=2874250+cols, nnz=3063058)
+##### wd_occupation #####
+cuGraph bool [BFS (full reachability)]: 44.9175 ms/traversal  (nodes=3459933+cols, nnz=4596658)
+cuGraph tropical [SSSP (single-source shortest paths)]: 45.0141 ms/traversal  (nodes=3459933+cols, nnz=4596658)
+##### wd_subclass_of #####
+cuGraph bool [BFS (full reachability)]: 23.6665 ms/traversal  (nodes=1487709+cols, nnz=2024347)
+cuGraph tropical [SSSP (single-source shortest paths)]: 21.9062 ms/traversal  (nodes=1487709+cols, nnz=2024347)

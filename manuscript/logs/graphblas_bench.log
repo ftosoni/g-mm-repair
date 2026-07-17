@@ -1,0 +1,47 @@
+=== generate YAGO sparse edge lists ===
+Scanning yago-2s.dat for predicates ['15', '16', '8'] ...
+
+name                     pid        rows        cols         nnz
+yago_plays_for             8       91397       13765      412388
+yago_is_citizen_of        16       45823         309       46060
+yago_acted_in             15       26665       39559      127513
+##### yago_plays_for #####
+GraphBLAS bool nthreads= 1: 0.1187 ms/vector  (rows=91397 cols=13765 nnz=412388)
+GraphBLAS bool nthreads=20: 0.0537 ms/vector  (rows=91397 cols=13765 nnz=412388)
+GraphBLAS tropical nthreads= 1: 0.6821 ms/vector  (rows=91397 cols=13765 nnz=412388)
+GraphBLAS tropical nthreads=20: 0.2181 ms/vector  (rows=91397 cols=13765 nnz=412388)
+##### yago_is_citizen_of #####
+GraphBLAS bool nthreads= 1: 0.0503 ms/vector  (rows=45823 cols=309 nnz=46060)
+GraphBLAS bool nthreads=20: 0.0591 ms/vector  (rows=45823 cols=309 nnz=46060)
+GraphBLAS tropical nthreads= 1: 0.1170 ms/vector  (rows=45823 cols=309 nnz=46060)
+GraphBLAS tropical nthreads=20: 0.1340 ms/vector  (rows=45823 cols=309 nnz=46060)
+##### yago_acted_in #####
+GraphBLAS bool nthreads= 1: 0.0572 ms/vector  (rows=26665 cols=39559 nnz=127513)
+GraphBLAS bool nthreads=20: 0.0452 ms/vector  (rows=26665 cols=39559 nnz=127513)
+GraphBLAS tropical nthreads= 1: 0.1580 ms/vector  (rows=26665 cols=39559 nnz=127513)
+GraphBLAS tropical nthreads=20: 0.1709 ms/vector  (rows=26665 cols=39559 nnz=127513)
+##### wd_sports_team #####
+GraphBLAS bool nthreads= 1: 0.7035 ms/vector  (rows=332121 cols=29854 nnz=1136249)
+GraphBLAS bool nthreads=20: 0.2465 ms/vector  (rows=332121 cols=29854 nnz=1136249)
+GraphBLAS tropical nthreads= 1: 2.4061 ms/vector  (rows=332121 cols=29854 nnz=1136249)
+GraphBLAS tropical nthreads=20: 0.5000 ms/vector  (rows=332121 cols=29854 nnz=1136249)
+##### wd_cast_member #####
+GraphBLAS bool nthreads= 1: 0.3399 ms/vector  (rows=173977 cols=144095 nnz=1033124)
+GraphBLAS bool nthreads=20: 0.1136 ms/vector  (rows=173977 cols=144095 nnz=1033124)
+GraphBLAS tropical nthreads= 1: 1.5183 ms/vector  (rows=173977 cols=144095 nnz=1033124)
+GraphBLAS tropical nthreads=20: 0.3827 ms/vector  (rows=173977 cols=144095 nnz=1033124)
+##### wd_citizenship #####
+GraphBLAS bool nthreads= 1: 3.3262 ms/vector  (rows=2874250 cols=2556 nnz=3063058)
+GraphBLAS bool nthreads=20: 0.5806 ms/vector  (rows=2874250 cols=2556 nnz=3063058)
+GraphBLAS tropical nthreads= 1: 8.8338 ms/vector  (rows=2874250 cols=2556 nnz=3063058)
+GraphBLAS tropical nthreads=20: 2.9864 ms/vector  (rows=2874250 cols=2556 nnz=3063058)
+##### wd_occupation #####
+GraphBLAS bool nthreads= 1: 6.7253 ms/vector  (rows=3459933 cols=10610 nnz=4596658)
+GraphBLAS bool nthreads=20: 0.7669 ms/vector  (rows=3459933 cols=10610 nnz=4596658)
+GraphBLAS tropical nthreads= 1: 14.0981 ms/vector  (rows=3459933 cols=10610 nnz=4596658)
+GraphBLAS tropical nthreads=20: 3.6173 ms/vector  (rows=3459933 cols=10610 nnz=4596658)
+##### wd_subclass_of #####
+GraphBLAS bool nthreads= 1: 1.7427 ms/vector  (rows=1487709 cols=73417 nnz=2024347)
+GraphBLAS bool nthreads=20: 0.5460 ms/vector  (rows=1487709 cols=73417 nnz=2024347)
+GraphBLAS tropical nthreads= 1: 4.3629 ms/vector  (rows=1487709 cols=73417 nnz=2024347)
+GraphBLAS tropical nthreads=20: 1.7346 ms/vector  (rows=1487709 cols=73417 nnz=2024347)
