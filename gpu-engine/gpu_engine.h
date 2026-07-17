@@ -23,7 +23,7 @@
 #include "layered_types.h"   // LayeredRule, GPUSchedule (CUDA-free, shared)
 
 // Semiring policy structs -- the "concise leaf/combine/emit policy" of the
-// manuscript's monoid-homomorphism engine (sec:semiring). The kernels below are
+// manuscript's monoid-homomorphism engine (section "Beyond (+,x): a monoid-homomorphism engine"). The kernels below are
 // templated on one of these and selected at runtime by the SEMIRING env var, so
 // the *same* schedule and sweep evaluate any monoid over the grammar; only these
 // primitives change. Correctness needs only that oplus be associative (a
@@ -39,7 +39,7 @@
 //   apply(v,c) the coeff power used by binary (c=1) and run-length (c=t) rules;
 //              a plain scalar multiply for (+,x), a no-op for idempotent oplus
 //   emit/cpu_emit  the atomic scatter of a finished root into y (emit-on-the-spot)
-// Mapping (manuscript Table in sec:semiring):
+// Mapping (manuscript section "Beyond (+,x): a monoid-homomorphism engine"):
 //   PlusTimes -> SpMV;  Boolean -> BFS frontier/reachability;  Tropical ->
 //   Bellman-Ford relaxation (SSSP; APSP when batched).
 

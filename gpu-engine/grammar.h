@@ -23,7 +23,7 @@
 #include <cstdint>
 
 // A grammar over the CSRV string (the (C, R, V) representation of the
-// manuscript, sec:background), built from RePair (compression-first): rules are
+// manuscript, section "Background: grammar-compressed matrices"), built from RePair (compression-first): rules are
 // read from mm-repair's .vc.R, all of kind BINARY. This is the construction the
 // manuscript evaluates (section "A proper-layered streaming engine", "Step 1: RePair (unchanged)"), and it is fed
 // into build_schedule().
