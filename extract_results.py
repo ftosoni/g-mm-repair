@@ -263,7 +263,7 @@ def gen_tab_geno_time():
 
 
 # --------------------------------------------------------------------------------------
-# Table 3 -- tab:geno  (space & energy vs cuSPARSE, incl. crossover OOM)
+# Table 3 -- tab:geno  (space & energy vs cuSPARSE, incl. the crossover_synth scale point)
 # Figure 3 -- fig:space (footprint vs nnz)
 #   log: manuscript/logs/geno_space_energy.log
 #        one ## <key> block per dataset, containing gpu_test raw then cusparse_test raw.
@@ -291,6 +291,9 @@ def _space_energy_map():
             eng_mb   = (grabi(r"MEM analytic bytes:\s*(\d+)", eng_txt) or 0) / 1e6 or None,
             eng_pkmb = (grabi(r"MEM peak bytes:\s*(\d+)", eng_txt) or 0) / 1e6 or None,
             eng_mj   = grabf(r"ENERGY mJ/vector:\s*([\d.eE+-]+)", eng_txt),
+            # nnz as counted by the reconstructed-CSR builder in the log; the per-dataset
+            # constant above is only a fallback for blocks with no cuSPARSE half.
+            nnz      = grabi(r"NNZ:\s*(\d+)", cus_txt),
             cus_ms   = None if oom else grabf(r"Average time:\s*([\d.]+) ms/vector", cus_txt),
             cus_mb   = None if oom else ((grabi(r"MEM analytic bytes:\s*(\d+)", cus_txt) or 0)/1e6 or None),
             cus_mj   = None if oom else grabf(r"ENERGY mJ/vector:\s*([\d.eE+-]+)", cus_txt),
@@ -312,7 +315,7 @@ def gen_tab_geno():
                 print(f"  [warn] no space/energy for {key}", file=sys.stderr)
                 continue
             rows.append(
-                f"{tex} & {abbr(nnz)} & {mb(d['eng_mb']*1e6 if d['eng_mb'] else None)} & "
+                f"{tex} & {abbr(d['nnz'] or nnz)} & {mb(d['eng_mb']*1e6 if d['eng_mb'] else None)} & "
                 f"{mb(d['cus_mb']*1e6 if d['cus_mb'] else None)} & {f2(d['eng_ms'])} & "
                 f"{f2(d['cus_ms'])} & {_i(d['eng_mj'])} & {_i(d['cus_mj'])}\\\\")
     # crossover row: at this scale cuSPARSE's CSR now fits and runs; only fall back to
@@ -324,7 +327,7 @@ def gen_tab_geno():
         cus_ms = "OOM" if d['oom'] else f2(d['cus_ms'])
         cus_mj = "OOM" if d['oom'] else _i(d['cus_mj'])
         rows.append(
-            f"{tex} & {abbr(nnz)} & {mb(d['eng_mb']*1e6 if d['eng_mb'] else None)} & {cus_mb} & "
+            f"{tex} & {abbr(d['nnz'] or nnz)} & {mb(d['eng_mb']*1e6 if d['eng_mb'] else None)} & {cus_mb} & "
             f"{f2(d['eng_ms'])} & {cus_ms} & {_i(d['eng_mj'])} & {cus_mj}\\\\")
     header = [
         r"& & \multicolumn{2}{c}{space (MB)} & \multicolumn{2}{c}{time (ms)} & \multicolumn{2}{c}{energy (mJ)}\\",
@@ -379,7 +382,13 @@ def gen_tab_build():
 
 
 def gen_fig_space_dat():
-    """fig:space data: nnz, engine peak MB, cuSPARSE MB, oom flag (0/1)."""
+    """fig:space data: nnz, engine analytic MB, cuSPARSE analytic MB, oom flag (0/1).
+
+    Both series are the *analytic* device footprint so the two are compared on the same
+    metric (as tab:geno does). Plotting the engine's measured peak against cuSPARSE's
+    analytic figure would flatter the engine -- the peak runs well under the analytic
+    bound on some datasets (e.g. geno20: 12.0 vs 25.2 MB).
+    """
     se = _space_energy_map()
     if not se:
         return
@@ -388,12 +397,12 @@ def gen_fig_space_dat():
         d = se.get(key)
         if not d:
             continue
-        eng = (d["eng_pkmb"] or d["eng_mb"])
+        eng = (d["eng_mb"] or d["eng_pkmb"])   # analytic; peak only as a fallback
         cus = d["cus_mb"]
         oom = 1 if d["oom"] else 0
         # For the OOM point plot the analytic CSR estimate if present, else leave blank.
         cus_s = f"{cus:.1f}" if cus else "nan"
-        rows.append(f"{nnz:.0f} {eng:.1f} {cus_s} {oom} {key}")
+        rows.append(f"{(d['nnz'] or nnz):.0f} {eng:.1f} {cus_s} {oom} {key}")
     write_dat("fig_space.dat", "nnz eng_mb cus_mb oom label", rows)
 
 

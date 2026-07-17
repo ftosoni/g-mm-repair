@@ -28,8 +28,7 @@ mm-repair / vcf2mat.py. This is the sole synthetic generator used in the manuscr
 Linkage disequilibrium (the repetitive structure RePair exploits) is governed by the
 recombination-to-mutation ratio: a LOW recombination rate yields long shared haplotype
 blocks (high LD, highly compressible); a HIGH recombination rate breaks them up
-(low LD, poorly compressible). This replaces the ad-hoc founder-block model with a
-standard population-genetic simulator that can be cited and exactly reproduced via --seed.
+(low LD, poorly compressible). Every matrix is exactly reproducible via --seed.
 
 Usage:
   generate_msprime.py <rows> <cols> <out_matrix> [recomb_rate] [seed] [Ne] [mu]

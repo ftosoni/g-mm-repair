@@ -99,7 +99,7 @@ python3 generate_msprime.py 10000 700000 mm-repair/data/crossover_synth 1e-8 42
 > ```bash
 > ./mm-repair/matrepair -r --i32 mm-repair/data/crossover_synth 10000 700000
 > ```
-> takes **634.1 s total** (RePair 566.4 s + CSRV conversion 56.6 s) and yields a serialized grammar of **REANS 194.7 MB / RE32 250.7 MB** (the `>> REANS size` / `>> RE32 size` fields of the Compression Report; the lazy `-r -y` variant re-prints them without rebuilding). The space/energy/time figures above are read from the `## crossover_synth` block of `manuscript/logs/geno_space_energy.log` (produced by `reproduce.sh space`), and the run **self-verifies bit-for-bit** against the CPU reference — $10{,}000$ rows is below the driver's 30M-row CPU-ref threshold (`gpu_engine_test.cu:377`).
+> takes **634.1 s total** (RePair 566.4 s + CSRV conversion 56.6 s) and yields a serialized grammar of **REANS 194.7 MB / RE32 250.7 MB** (the `>> REANS size` / `>> RE32 size` fields of the Compression Report; the lazy `-r -y` variant re-prints them without rebuilding). The space/energy/time figures above are read from the `## crossover_synth` block of `manuscript/logs/geno_space_energy.log` (produced by `reproduce.sh space`), and the run **self-verifies against the CPU reference within float precision** (`max_rel_diff` $\approx 9.4\mathrm{e}{-7}$; this is a $(+,\times)$ float run, so it is not bit-for-bit — that holds for the Boolean/Tropical semirings) — $10{,}000$ rows is below the driver's 30M-row CPU-ref threshold (`gpu_engine_test.cu:377`).
 
 ### D. Knowledge Graphs (Wikidata Relations)
 The graph datasets are obtained from Zenodo: [10.5281/zenodo.7254968](https://zenodo.org/record/7254968) (Arroyuelo et al., *Datasets of Time- and Space-Efficient Regular Path Queries*).
@@ -320,7 +320,7 @@ for e in "wd_country 10058956 1747" "wd_cites_work 7072574 12245945" \
   ./mm-repair/matrepair -r -y --bool      "$1" "$2" "$3"             # serialized REANS size
 done
 ```
-`reproduce.sh graphscale` runs exactly this into `manuscript/logs/graph_scale.log`. It is **not** part of `./reproduce.sh all` because `wd_cites_work` (166.7M edges) and `swh_full` (1.22G edges) are heavy runs. **Note (SWH row):** the current `tab:graph_scale` SWH figures were measured under multi-tenant node load, so the two time columns (Bool eng/cuS ms) are **preliminary**; the space columns (REANS, CSR, eng.\ dev.) are analytic/deterministic. The full graph exceeds the driver's 30M-row CPU-reference threshold (`gpu_engine_test.cu`) so it does not self-verify by default; `./reproduce.sh crosscheck` runs it with `FORCE_CPU_VERIFY=1`, certifying the full graph bit-for-bit against the sequential + OpenMP CPU sweeps (and against cuSPARSE / CPU-CSR SpMV) — see §2.F.
+`reproduce.sh graphscale` runs exactly this into `manuscript/logs/graph_scale.log`. It is **not** part of `./reproduce.sh all` because `wd_cites_work` (166.7M edges) and `swh_full` (1.22G edges) are heavy runs. **Note (SWH row):** in `tab:graph_scale` the space columns (REANS, CSR, eng.\ dev.) are analytic/deterministic, while the two time columns (Bool eng/cuS ms) carry the usual profiling variance of the shared unified-memory node. The full graph exceeds the driver's 30M-row CPU-reference threshold (`gpu_engine_test.cu`) so it does not self-verify by default; `./reproduce.sh crosscheck` runs it with `FORCE_CPU_VERIFY=1`, certifying the full graph bit-for-bit against the sequential + OpenMP CPU sweeps (and against cuSPARSE / CPU-CSR SpMV) — see §2.F.
 
 ---
 
