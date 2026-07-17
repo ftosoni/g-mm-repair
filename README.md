@@ -1,6 +1,13 @@
 # GPU-Accelerated Grammar-Compressed Matrix Multiplication (g-mm-repair)
 
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+<p align="left">
+  <a href="https://github.com/ftosoni/g-mm-repair/actions/workflows/ci.yml"><img src="https://github.com/ftosoni/g-mm-repair/actions/workflows/ci.yml/badge.svg?branch=main&style=flat-square" alt="CI Status"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-blue?style=flat-square" alt="License"></a>
+  <a href="https://en.cppreference.com/"><img src="https://img.shields.io/badge/C%2B%2B-17-00599C?logo=c%2B%2B&logoColor=white&style=flat-square" alt="C++ 17"></a>
+  <a href="https://developer.nvidia.com/cuda-zone"><img src="https://img.shields.io/badge/CUDA-12.0+-76B900?logo=nvidia&logoColor=white&style=flat-square" alt="CUDA 12.0+"></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.8+-3776ab?logo=python&logoColor=white&style=flat-square" alt="Python 3.8+"></a>
+  <a href="https://www.openmp.org/"><img src="https://img.shields.io/badge/OpenMP-Parallel-blue?style=flat-square" alt="OpenMP"></a>
+</p>
 
 A high-performance level-synchronous GPU executor (written in CUDA C++) for computing right matrix-vector multiplication $y = Mx$ over grammar-compressed matrices. It implements a double-buffered level sweep algorithm with an **"emit-on-the-spot"** memory optimization that avoids carrying intermediate rule expansions to the top level, drastically reducing GPU memory usage and overhead.
 
