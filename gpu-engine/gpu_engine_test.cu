@@ -37,7 +37,7 @@
 
 // Driver `gpu_test`: the end-to-end harness behind the manuscript's genotype and
 // graph experiments. It (1) reads the value array + grammar, (2) builds the
-// proper-layered schedule (sec:partI-layer) and prints its structural figures
+// proper-layered schedule (section "A proper-layered streaming engine", Step 2) and prints its structural figures
 // -- L, w*, |R|, +pt: the architecture-independent numbers of tab:geno_through /
 // tab:graph_struct -- (3) runs the CPU reference sweep as the oracle, (4) runs
 // the GPU streaming sweep and verifies bit-for-bit, and (5) optionally runs the
@@ -344,7 +344,7 @@ int main(int argc, char** argv) {
                   << ", distinct values=" << num_distinct_vals << std::endl;
     }
 
-    // 3. Lay out the grammar (levels + pass-through completion, sec:partI-layer)
+    // 3. Lay out the grammar (levels + pass-through completion, section "A proper-layered streaming engine", Step 2)
     //    with the shared schedule builder -- identical code path regardless of
     //    the constructor. This also compacts the terminal alphabet to the
     //    symbols actually referenced.

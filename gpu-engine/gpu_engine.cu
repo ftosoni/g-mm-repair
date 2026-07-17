@@ -23,7 +23,7 @@
 #include <nvml.h>
 
 // The CUDA kernels of the streaming, double-buffered, level-synchronous sweep
-// (manuscript sec:partI-gpu, Listing 1). One kernel launch per level k reads the
+// (manuscript section "A proper-layered streaming engine", Step 3; Listing 1). One kernel launch per level k reads the
 // previous frontier and writes the next; the host swaps the two buffers so they
 // alternate read-only/write-only, keeping the live set at O(max_k w_k) rather
 // than O(|R|) (lem:liveness). Every node update is one branch-free fused
