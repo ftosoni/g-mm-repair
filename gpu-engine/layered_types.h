@@ -20,14 +20,14 @@
 #define LAYERED_TYPES_H
 
 // Plain (CUDA-free) definitions of the proper-layered schedule that the paper's
-// streaming, double-buffered sweep consumes (manuscript sec:partI, Listing 1).
+// streaming, double-buffered sweep consumes (manuscript section "A proper-layered streaming engine", Listing 1).
 // gpu_engine.h includes this; the host-side schedule builder (build_schedule.*)
 // also includes it, so it compiles with a plain C++ host compiler -- no CUDA
 // toolchain required for the grammar analysis the paper describes as "computed
 // once on the host".
 
 // Layered rule for the proper-layered, double-buffered sweep. This is the
-// branch-free unified node update of the manuscript (sec:partI-gpu, eq. for
+// branch-free unified node update of the manuscript (section "A proper-layered streaming engine", Step 3, eq. for
 // cur = coeff * cv(left) + cv(right)); expressed here for the (+,x) semiring,
 // with the generic (leaf/combine) version templated in gpu_engine.h.
 // Each node computes  W[idx] = coeff * cv(left) + cv(right), where
@@ -37,8 +37,8 @@
 //   binary       N -> A B : left=A, right=B,    coeff=1
 //   pass-through N -> M    : left=M, right=zero, coeff=1   (identity node added
 //                                                           by completion)
-//   run-length   N -> B^t  : left=B, right=zero, coeff=t   (eq:rleval)
-// Pass-through nodes are inserted by pass-through completion (sec:partI-layer)
+//   run-length   N -> B^t  : left=B, right=zero, coeff=t   (Step 3, run-length case)
+// Pass-through nodes are inserted by pass-through completion (section "A proper-layered streaming engine", Step 2)
 // and are the only structural overhead the paper reports (+pt). The run-length
 // kind is a reserved capability the sweep can evaluate; the RePair path that the
 // paper evaluates produces binary and pass-through rules only.

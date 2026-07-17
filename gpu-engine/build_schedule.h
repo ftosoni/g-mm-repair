@@ -26,7 +26,7 @@
 
 // Turns the RePair grammar into the proper-layered, double-buffered schedule the
 // GPU engine consumes. This is "Step 2: pass-through completion" of the
-// manuscript (sec:partI-layer): the single host-side step the paper describes
+// manuscript (section "A proper-layered streaming engine"): the single host-side step the paper describes
 // as an offline, amortized preprocessing cost. It is CUDA-free and runs on the
 // host. Levels are computed from the rule structure (manuscript eq:level,
 // extended for run-length rules: lvl(N->B^t) = 1 + lvl(B)); proper layering
