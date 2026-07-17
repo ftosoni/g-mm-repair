@@ -26,14 +26,14 @@
 // (manuscript section "A proper-layered streaming engine", Step 3; Listing 1). One kernel launch per level k reads the
 // previous frontier and writes the next; the host swaps the two buffers so they
 // alternate read-only/write-only, keeping the live set at O(max_k w_k) rather
-// than O(|R|) (lem:liveness). Every node update is one branch-free fused
+// than O(|R|) (the "Liveness / double buffering" lemma). Every node update is one branch-free fused
 // multiply-add (init_T_terminals / eval_level_layered) and each root of the top
 // sequence C is atomically added into y the instant its level is computed and
 // then freed (emit_level / emit_terminals -- "emit on the spot"). All four
 // kernels are templated on a semiring policy from gpu_engine.h. The *_batched
 // twins below do the same B vectors at once (SpMM, Y = M X), vectors innermost.
 // Buffers are cudaMallocManaged: on the GB10's unified coherent memory there is
-// no explicit host<->device copy for the frontiers (sec:setup).
+// no explicit host<->device copy for the frontiers (section "Experimental setup").
 
 #define CUDA_CHECK(call) \
     do { \

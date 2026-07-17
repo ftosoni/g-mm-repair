@@ -24,7 +24,7 @@
 #include <filesystem>
 
 // Standalone, CUDA-free inspector for a RePair grammar (.vc.R): reads the raw
-// rules, computes each rule's level by eq:level (before any pass-through
+// rules, computes each rule's level by the manuscript's level equation (before any pass-through
 // completion), and prints the depth L and the per-level width distribution.
 // Handy for a quick look at a grammar's shape; the numbers the paper reports
 // (L, w* AFTER completion, +pt) come from gpu_test / build_schedule, not here.

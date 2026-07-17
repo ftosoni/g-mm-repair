@@ -28,12 +28,12 @@
 // GPU engine consumes. This is "Step 2: pass-through completion" of the
 // manuscript (section "A proper-layered streaming engine"): the single host-side step the paper describes
 // as an offline, amortized preprocessing cost. It is CUDA-free and runs on the
-// host. Levels are computed from the rule structure (manuscript eq:level,
+// host. Levels are computed from the rule structure (the manuscript's level equation,
 // extended for run-length rules: lvl(N->B^t) = 1 + lvl(B)); proper layering
-// (def:proper) is then enforced by inserting identity pass-through nodes on
+// (the "Proper layering" definition) is then enforced by inserting identity pass-through nodes on
 // every nonterminal edge that skips a level. The number of inserted nodes is
-// the +pt inflation reported in the paper's structural tables (tab:geno_through,
-// tab:graph_struct); it is small on a natively layered grammar and grows with
+// the +pt inflation reported in the paper's structural tables (the genotype and
+// Wikidata ones); it is small on a natively layered grammar and grows with
 // the edge-span profile of a RePair grammar.
 struct BuiltSchedule {
     int alpha = 0;

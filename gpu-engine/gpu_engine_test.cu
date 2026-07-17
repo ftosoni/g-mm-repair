@@ -32,14 +32,14 @@
 #include <omp.h>
 #endif
 #ifndef _WIN32
-#include <sys/resource.h>   // getrusage: peak host RSS for the construction cost (sec:limitations ii)
+#include <sys/resource.h>   // getrusage: peak host RSS for the construction cost (section "Limitations", item ii)
 #endif
 
 // Driver `gpu_test`: the end-to-end harness behind the manuscript's genotype and
 // graph experiments. It (1) reads the value array + grammar, (2) builds the
 // proper-layered schedule (section "A proper-layered streaming engine", Step 2) and prints its structural figures
-// -- L, w*, |R|, +pt: the architecture-independent numbers of tab:geno_through /
-// tab:graph_struct -- (3) runs the CPU reference sweep as the oracle, (4) runs
+// -- L, w*, |R|, +pt: the architecture-independent numbers of the genotype /
+// Wikidata structural-figures tables -- (3) runs the CPU reference sweep as the oracle, (4) runs
 // the GPU streaming sweep and verifies bit-for-bit, and (5) optionally runs the
 // batched (SpMM) path. The semiring (PlusTimes / Boolean / Tropical) is chosen
 // at runtime by the SEMIRING env var. CLI: <base> <rows> <cols> [iters] [mode] [B].
@@ -354,8 +354,8 @@ int main(int argc, char** argv) {
     auto sched_end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> sched_dur = sched_end - sched_start;
     std::cout << "Schedule builder construction time: " << sched_dur.count() << " ms" << std::endl;
-    // Canonical, machine-parseable construction-cost line (see sec:limitations (ii),
-    // extract_results.py -> tab:build). Time = pass-through completion + level-bucketing
+    // Canonical, machine-parseable construction-cost line (see section "Limitations", item (ii),
+    // extract_results.py -> the host-construction-cost table). Time = pass-through completion + level-bucketing
     // + terminal compaction (build_schedule); peak host MB = process max RSS so far, a
     // proxy for the memory needed to construct the layered structure on the host.
     double peak_host_mb = 0.0;
