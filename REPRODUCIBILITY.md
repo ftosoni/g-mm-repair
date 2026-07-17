@@ -157,7 +157,7 @@ for f in graph.graph graph.offsets graph.obl graph.properties; do curl -s -O "$B
 export JAVA_HOME=~/swh-work/jdk && export PATH=$JAVA_HOME/bin:$PATH
 javac -cp "jars/*" Dump.java && java -Xmx6g -cp "jars/*:." Dump graph swh_full     # 1.22 G edges, ~2 min
 # 3. RePair-compress (no dense matrix; --bool = textual "row col" nonzeros):
-REPO=/mnt/nfs/home/tosoni/mm-grammar-gpu
+REPO=/path/to/g-mm-repair    # absolute path to your checkout
 $REPO/mm-repair/matrepair -r --bool swh_full 45691499 45691499                      # REANS 490 MB, 3.22 bpe
 # 4. Structural check + Boolean device footprint:
 export PATH=/usr/local/cuda/bin:$PATH

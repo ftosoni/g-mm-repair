@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cd /mnt/nfs/home/tosoni/mm-grammar-gpu
+cd "$(dirname "$0")"
 
 export PATH=/usr/local/cuda/bin:$PATH
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-cd /mnt/nfs/home/tosoni/mm-grammar-gpu
+cd "$(dirname "$0")"
 SP=cgvenv/lib/python3.12/site-packages
 export LD_LIBRARY_PATH="$(find $SP -type d \( -name lib -o -name lib64 \) | tr "\n" :):/usr/local/cuda/lib64"
 export PATH=/usr/local/cuda/bin:$PATH
