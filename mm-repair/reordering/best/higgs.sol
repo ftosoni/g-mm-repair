@@ -1,0 +1,34 @@
+NAME : higgs-002-integer.pruned_local_16.tour
+TYPE : TOUR
+DIMENSION : 28
+TOUR_SECTION
+1
+2
+7
+11
+15
+16
+18
+19
+20
+21
+25
+26
+27
+28
+3
+8
+12
+14
+17
+24
+4
+22
+5
+6
+9
+10
+13
+23
+-1
+EOF

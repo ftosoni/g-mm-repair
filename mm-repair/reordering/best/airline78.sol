@@ -1,0 +1,35 @@
+NAME : airline78.pruned_local_8.tour
+TYPE : TOUR
+DIMENSION : 29
+TOUR_SECTION
+1
+2
+3
+4
+10
+17
+18
+19
+5
+6
+8
+13
+22
+23
+24
+7
+16
+26
+9
+29
+11
+15
+27
+28
+12
+14
+20
+21
+25
+-1
+EOF

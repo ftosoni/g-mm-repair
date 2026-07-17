@@ -1,0 +1,35 @@
+NAME : higgs-002-integer.pruned_global_8.0.tour
+COMMENT : Length = 0
+TYPE : TOUR
+DIMENSION : 28
+TOUR_SECTION
+2
+19
+12
+3
+1
+6
+24
+10
+14
+20
+16
+18
+8
+15
+11
+23
+7
+25
+27
+28
+26
+22
+5
+13
+21
+17
+9
+4
+-1
+EOF

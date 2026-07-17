@@ -1,0 +1,25 @@
+NAME : susy-integer.pruned_global_4.0.tour
+COMMENT : Length = 0
+TYPE : TOUR
+DIMENSION : 18
+TOUR_SECTION
+2
+15
+3
+14
+17
+10
+13
+1
+18
+6
+4
+8
+12
+16
+7
+9
+11
+5
+-1
+EOF

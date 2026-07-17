@@ -1,0 +1,26 @@
+NAME : susy-integer.-434579.tour
+COMMENT : Length = -434579
+COMMENT : Found by LKH [Keld Helsgaun] Wed May 19 15:00:08 2021
+TYPE : TOUR
+DIMENSION : 18
+TOUR_SECTION
+1
+11
+15
+4
+17
+5
+3
+8
+6
+2
+12
+16
+14
+9
+7
+10
+13
+18
+-1
+EOF

@@ -1,0 +1,62 @@
+NAME : covtype.-5077806.tour
+COMMENT : Length = -5077806
+COMMENT : Found by LKH [Keld Helsgaun] Fri Jul  2 10:21:12 2021
+TYPE : TOUR
+DIMENSION : 54
+TOUR_SECTION
+1
+8
+2
+9
+7
+4
+5
+3
+10
+13
+6
+37
+47
+40
+49
+35
+22
+48
+39
+12
+52
+44
+53
+30
+27
+24
+29
+26
+41
+28
+31
+19
+36
+50
+42
+23
+54
+46
+20
+14
+15
+25
+38
+51
+21
+34
+18
+17
+33
+32
+16
+45
+43
+11
+-1
+EOF

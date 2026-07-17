@@ -1,0 +1,36 @@
+NAME : higgs-002-integer.-66253253.tour
+COMMENT : Length = -66253253
+COMMENT : Found by LKH [Keld Helsgaun] Sun Jul  4 22:07:27 2021
+TYPE : TOUR
+DIMENSION : 28
+TOUR_SECTION
+1
+3
+8
+12
+16
+20
+19
+11
+2
+7
+15
+18
+14
+10
+17
+24
+21
+25
+5
+27
+22
+26
+28
+4
+23
+9
+6
+13
+-1
+EOF

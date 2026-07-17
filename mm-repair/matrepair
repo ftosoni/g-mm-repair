@@ -1,0 +1,403 @@
+#!/usr/bin/env python3
+
+import sys, time, argparse, subprocess, os.path, datetime
+try:
+    from psutil import virtual_memory
+except ImportError:
+    virtual_memory = None
+from multiprocessing import Pool
+
+Description = """
+Compressed Sparse Row-Value representation + Repair compression
+
+  Compression:
+     {exe} file [options]
+  creates compressed files file.[if]val file.vc.C and file.vc.R
+
+  Decompression: (not yet implemented)
+     {exe} -d file [options]
+  decompresses file.[if]val file.vc.C and file.vc.R to file.out 
+  
+where [if] is either 'i', 'f' or '' and denotes the type of the
+values in the .[if]val file: i=int32, f=float32, ''=float64 
+  
+By default the input matrix is assumed to contains doubles in csv format,
+the options --i32, --f32, and --f64 signal that the input is in binary
+format with entries of type int32, float32 and float64. The .[if]val
+file will contain entries of the same type as the input matrix.
+
+The option --bool signals that the input matrix contains booleans and
+is stored in text format (eg a list of nonzero positions). 
+The .val file will contain only the value 1 in the float64 format 
+"""
+
+# path of the auxiliary tools
+# irepair with memory constraint (symbols are integers) 
+irepair_exe = "brepair/irepair0"
+# idespair
+idespair_exe = "brepair/idespair"
+# default tool to compute the csrv/csrz representation of a csv matrix
+mat2csrv_exe = "csvmat2csrv"
+# tool to compress a sequence of int32 using ans-fold  
+ansf_exe = "ans/encode.x"
+# tool to compress a sequence of int32 using an integer vector from sdsl   
+iv_exe = "sdsl/encode.x"
+
+
+def main():
+  show_command_line(sys.stderr)
+  parser = argparse.ArgumentParser(description=Description.format(exe=sys.argv[0]), formatter_class=argparse.RawTextHelpFormatter)
+  parser.add_argument('input', help='matrix file name', type=str)
+  parser.add_argument('rows',  help='number of rows', type=int)
+  parser.add_argument('cols', help='number of columns', type=int)
+  parser.add_argument('-b', help='number of row blocks (def. 1)', type=int, default=1)
+  parser.add_argument('-d', help='decompress',action='store_true')
+  parser.add_argument('-c', help='decompress and check',action='store_true')
+  parser.add_argument('-r', help='compression full report',action='store_true')
+  parser.add_argument('-p', help='number of repair procs (def. 1)',type=int, default=1)
+  parser.add_argument('-m', help='force repair to use at most M MBs (def. 95%% of available RAM)',default=-1, type=int)
+  parser.add_argument('-y', help='lazy rebuild makefile style',action='store_true')
+  # parser.add_argument('-k', help='keep intermediate files',action='store_true')
+  parser.add_argument('-v', help="verbose", action='store_true')
+  parser.add_argument('--bool', help='matrix entries are bool in text format',action='store_true')
+  parser.add_argument('--sparse', help='matrix entries are in sparse text format',action='store_true')
+  parser.add_argument('--i32', help='matrix entries are int32 in binary format',action='store_true')
+  parser.add_argument('--f32', help='matrix entries are float32 in binary format',action='store_true')
+  parser.add_argument('--f64', help='matrix entries are float64 in binary format',action='store_true')
+  parser.add_argument('--complex',  help='matrix entries have an imaginary part',action='store_true')
+  parser.add_argument('--noconv',  help='skip the CSRV conversion phase (debug only)',action='store_true')
+  parser.add_argument('--norepair',  help='stop after the conversion phase (debug only)',action='store_true')
+  parser.add_argument('--drv',  help="keep 0s and don't store column id (DRV format, debug only)",action='store_true')
+  args = parser.parse_args()
+  if args.p < 1 or args.b <1:
+    print("Options -p and -b must be positive")
+    sys.exit(1) 
+  if args.p>args.b:
+    args.p = args.b # more processes than blocks makes no sense
+    print("Setting number of parallel processes to", args.p)
+  # if no max RAM provided on command line uses 90% of total 
+  if(args.m<0):
+    if virtual_memory is not None:
+        mem = virtual_memory().total
+        args.m = max(4000,int(0.90*mem/2**20)) # assume at least 4GB in case virtual_memory() misbehaves
+    else:
+        args.m = 4000
+    args.m = args.m//args.p # if repair is done in parallel divide memory equally 
+    print("Setting memory for each repair instance to", args.m, "MBs")
+  # check for incompatible options
+  if sum([args.bool, args.sparse, args.complex])>1:
+    print("Options --bool --sparse and --complex are incompatible")
+    sys.exit(1)
+  if args.drv and args.sparse:
+    print("Options --drv and --sparse are incompatible")
+    sys.exit(1)
+  if sum([args.bool, args.i32, args.f32,  args.f64])>1:
+    print("Options --bool --i32 --f32 and --f64 are incompatible")
+    sys.exit(1)
+  # choose extension for the file containing the matrix entries
+  # default csv matrix of doubles, otherwise change exe and extension
+  args.val_ext = ".val"
+  args.csrv_exe = "csvmat2csrv"
+  args.entry_size = 8   # size in bytes of a double 
+  # the following 4 options are incompatible 
+  if args.i32:
+    args.val_ext = ".ival"
+    args.csrv_exe = "bin2csrvi" 
+    args.entry_size = 4   # size in bytes of a int32
+  elif args.f32:
+    args.val_ext = ".fval"
+    args.csrv_exe = "bin2csrvf"
+    args.entry_size = 4   # size in bytes of a float32
+  elif args.f64:
+    args.csrv_exe = "bin2csrv" # matrix of doubles in binary form 
+  elif args.bool:
+    args.csrv_exe = "bin2csrv -B" # boolean text matrix considering 0/1 float64 values
+  # take care of the sparse option
+  if args.sparse:
+    if args.i32 or args.f32:
+      args.csrv_exe += " -S"    # sparse textual input values int32 or float 32
+    else:
+      args.csrv_exe = "bin2csrv -S" # sparse text matrix values in float64
+  # take care of the drv option   
+  if args.drv: 
+    args.vc_ext = ".dv"   # drv: no column id's and keep 0s
+    args.name = "drv "
+    args.val_ext += "d"
+  else:          
+    args.vc_ext = ".vc"   # csrv: no 0s and entries encode also columns id 
+    args.name = "crsv"
+  
+  # init time counters 
+  vc_time = repair_time = iv_time = ansf_time = 0
+
+  logfile_name = args.input + ".log"
+  # get absolute path to main matrepair directory 
+  args.main_dir = os.path.dirname(os.path.abspath(__file__))
+  print("Sending logging messages to file:", logfile_name)
+  with open(logfile_name,"a",1) as logfile: # 1 for line buffering: keeps the logs ordered
+    start0 = start = time.time()
+    show_command_line(logfile)    
+    if(args.d or args.c): # decompress and check
+      print(" *** not implemented yet ***");
+      sys.exit(1)
+      # to be fixed
+      # exe = integer_despair_exe
+      # command = "{exe} {file}".format(
+                # exe = os.path.join(args.main_dir,exe), file=args.input)
+      # print("==== Decompressing C+R files.\nCommand:", command)
+      # if(execute_command(command,logfile)!=True):
+        # return
+      # print("Elapsed time: {0:.4f}".format(time.time()-start0));
+      # if args.c:      
+        # command = "cmp {file} {file}.out".format(file=args.input); 
+        # print("==== Comparing decompressed file.\nCommand:", command);
+        # if(execute_command(command,logfile)):
+          # print("Decompressed file matches");
+        # else:
+          # print("Decompressed file differs");
+                  
+    else:       # mat2csrv + irepair
+      # ----------conversion to the CSRV format 
+      files_changed = need_rebuild_multipart(args.input, args.b, args.vc_ext) or need_rebuild(args.input,args.val_ext)
+      if args.noconv or (args.y and not files_changed):
+        print("---- Skipping conversion bin/csv->csrv")
+      else:
+        command = "{exe} {opts} {nocol} {c64} {mfile} {rows} {cols}".format(
+          exe = os.path.join(args.main_dir,args.csrv_exe), mfile=args.input,
+          rows = args.rows, cols=args.cols, opts = f"-b {args.b}",
+          c64 = "-c" if args.complex else "",nocol = "-n" if args.drv else "");
+        print("==== Conversion bin/csv->csrv\nCommand:", command)
+        if(execute_command(command,logfile)!=True):
+          sys.exit(2)
+        vc_time = time.time()-start
+        print("Conversion time: {0:.4f}".format(vc_time))
+        if args.norepair:
+          print("==== Stopping after the conversion phase as requested")      
+          return
+          
+      # now we have args.b different blocks 
+      # do grammar compression possibily in parallel
+      # first create list of commands
+      clist = [] # list of compression commands to execute 
+      for bn in range(args.b):  
+        basename = args.input + filext_multipart(args.b,bn)
+        # ---- apply irepair to the .vc file 
+        if args.y and not need_rebuild(basename+args.vc_ext, ".C", ".R"):
+          print("---- Skipping irepair for", basename+args.vc_ext)
+        else:
+          command = "{exe} {mfile}{ext} {mb}".format(mb=args.m,ext=args.vc_ext,
+                    exe = os.path.join(args.main_dir,irepair_exe), mfile=basename)
+          clist.append(command)
+      # execute commands  
+      start = time.time()
+      if args.p>1 and len(clist)>1:
+        print("==== Repair paralell compression")
+        if execute_commands(clist,logfile,args.p)!=True:
+          sys.exit(3)
+        repair_time += time.time()-start
+      else:
+        for command in clist:
+          print("==== Repair compression\nCommand:", command)
+          if(execute_command(command,logfile)!=True):
+            sys.exit(3)
+          repair_time += time.time()-start
+      print("Repair time: {0:.4f}".format(repair_time))
+
+      # compress .C and .R files 
+      for bn in range(args.b):  
+        basename = args.input + filext_multipart(args.b,bn)          
+        # ---- apply integer vector encoding to the .vc.C and vc.R files
+        iv_time = 0 
+        if args.y and not need_rebuild(basename+args.vc_ext+".C", ".iv"):
+          print("---- Skipping iv(C)")
+        else:
+          start = time.time()
+          command = "{exe} {mfile}{ext}.C ".format(ext=args.vc_ext,
+                    exe = os.path.join(args.main_dir,iv_exe), mfile=basename)
+          print("==== Integer vector .C compression\nCommand:", command)
+          if(execute_command(command,logfile)!=True):
+           sys.exit(4)
+          iv_time += time.time()-start
+        if args.y and not need_rebuild(basename+args.vc_ext+".R", ".iv"):
+          print("---- Skipping iv(R)")
+        else:
+          start = time.time()
+          command = "{exe} {mfile}{ext}.R ".format(ext=args.vc_ext,
+                    exe = os.path.join(args.main_dir,iv_exe), mfile=basename)
+          print("==== Integer vector .R compression\nCommand:", command)
+          if(execute_command(command,logfile)!=True):
+           sys.exit(5)
+          iv_time += time.time()-start
+          print("Integer vector compression time: {0:.4f}".format(iv_time))
+        
+        # ---- apply ans_fold-1 to the .vc.C file 
+        if args.y and not need_rebuild(basename+args.vc_ext+".C", ".ansf.1"):
+          print("---- Skipping ans-fold")
+        else:
+          start = time.time()
+          command = "{exe} {mfile}{ext}.C ".format(ext=args.vc_ext,
+                    exe = os.path.join(args.main_dir,ansf_exe), mfile=basename)
+          print("==== Ans-fold compression\nCommand:", command)
+          if(execute_command(command,logfile)!=True):
+           sys.exit(6)
+          ansf_time += time.time()-start
+          print("Ans-fold time: {0:.4f}".format(ansf_time))
+      # end for on row blocks
+      total_time = time.time()-start0
+      print("Elapsed time: {0:.4f}".format(total_time))      
+      if args.r:
+        compression_report(args,vc_time,repair_time,iv_time,ansf_time,total_time)
+      
+      # DISABLED: delete temporary .vc file
+      if False and not args.k: # temporarily disabled 
+        command = f"rm -f {basename}{args.vc_ext}"
+        if(execute_command(command,logfile)!=True):
+          sys.exit(7)
+
+  print("==== Done")
+  
+
+def getsize_multipart(base,num,ext):
+  tot = 0
+  for i in range(num):
+    name = base + filext_multipart(num,i)+ext
+    tot += os.path.getsize(name)
+  return tot
+
+def compression_report(args,tconv,trepair,tiv,tans,ttot):
+  print("==== Compression Report:")
+  print(" >> matrix name:",args.input);
+  print(" >> conversion time: {0:.2f}".format(tconv))
+  print(" >> repair time: {0:.2f}".format(trepair))
+  print(" >> integer vectors time: {0:.2f}".format(tiv))
+  print(" >> ansf time: {0:.2f}".format(tans))
+  print(" >> total time: {0:.2f}".format(ttot))  
+  valsize = os.path.getsize(args.input + args.val_ext)
+  vcsize = getsize_multipart(args.input,args.b,args.vc_ext) 
+  nonzero = vcsize//4 - args.rows
+  isize = (bits(valsize//args.entry_size)*args.rows*args.cols)//8
+  print(" >> matrix log(alpha)xNumEntries size:",isize, "bytes")  
+  if args.bool:  isize = (args.rows*args.cols+7)//8
+  else:          isize = args.entry_size*args.rows*args.cols
+  print(" >> matrix dense size:",isize, "bytes")
+  print(" >> total number of nonzero: {0} ({1:.2f}%)".format(nonzero,100*nonzero/(args.rows*args.cols)))
+  print(" >> number of distinct nonzero: {0}".format(valsize//args.entry_size))
+  psize = valsize+vcsize
+  if args.bool: print(f" >> {args.name.upper()}  size: {psize} bytes  ({8*psize/nonzero:.2f}) bpe")
+  else:         print(f" >> {args.name.upper()}  size: {psize} bytes  ({100*psize/isize:.2f}%)")
+  csize = getsize_multipart(args.input,args.b,args.vc_ext+".C") 
+  rsize = getsize_multipart(args.input,args.b,args.vc_ext+".R") 
+  psize = valsize + csize+rsize
+  if args.bool: print(f" >> RE32  size: {psize} bytes  ({8*psize/nonzero:.2f}) bpe")
+  else:         print(f" >> RE32  size: {psize} bytes  ({100*psize/isize:.2f}%)")
+  csizeiv = getsize_multipart(args.input,args.b,args.vc_ext+".C.iv") 
+  rsizeiv = getsize_multipart(args.input,args.b,args.vc_ext+".R.iv") 
+  psize = valsize + csizeiv+rsizeiv
+  if args.bool: print(f" >> REIV  size: {psize} bytes  ({8*psize/nonzero:.2f}) bpe")
+  else:         print(f" >> REIV  size: {psize} bytes  ({100*psize/isize:.2f}%)")
+  ans_csize = getsize_multipart(args.input,args.b,args.vc_ext+".C.ansf.1")
+  # REANS32 no longer considered
+  # psize = valsize+ans_csize+rsize 
+  # print(" >> REANS32 size:", psize, "bytes  ({0:.2f}%)".format(100*psize/isize))
+  psize = valsize+ans_csize+rsizeiv
+  if args.bool: print(f" >> REANS size: {psize} bytes  ({8*psize/nonzero:.2f}) bpe")
+  else:         print(f" >> REANS size: {psize} bytes  ({100*psize/isize:.2f}%)")
+
+
+def show_command_line(f):
+  f.write("\n#### " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+  f.write("\n Command line: ") 
+  for x in sys.argv:
+     f.write(x+" ")
+  f.write("\n")   
+
+
+# compute hash digest for a file (not used)
+# def file_digest(name,logfile):
+#     try:
+#       hash_command = "{exe} {infile}".format(exe=shasum_exe, infile=name)
+#       hashsum = subprocess.check_output(hash_command.split(),stderr=logfile)
+#       hashsum = hashsum.decode("utf-8").split()[0]
+#     except:
+#       hashsum = "Error!" 
+#     return hashsum  
+      
+      
+# execute command: return True is everything OK, False otherwise
+def execute_command(command,logfile):
+  try:
+    subprocess.check_call(command.split(),stdout=logfile,stderr=logfile)
+  except subprocess.CalledProcessError:
+    print("Error executing command line:")
+    print("\t"+ command)
+    print("Check log file: " + logfile.name)
+    return False
+  return True
+
+# execute command and return CompletedProcess 
+def local_execute(command):
+    return subprocess.run(command.split(),encoding="utf-8",
+                          stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+
+def execute_commands(commands,logfile,p):
+  # execute in parallel 
+  print("---- Executing", p, "parallel processes")
+  with Pool(p) as pool:
+    completed = pool.map(local_execute,commands)
+  print("---- Parallel processing completed")
+  done  = True
+  for c,r in zip(commands,completed):
+    print("Command:", c, file=logfile)
+    print("Return code:", r.returncode, file=logfile) 
+    print("---stdout---\n",r.stdout,"\n--stderr--\n",r.stderr, file=logfile) 
+    if r.returncode!=0:
+      print("Error executing command line:")
+      print("\t"+ c)
+      print("Check log file: " + logfile.name)
+      done=False
+  return done
+
+
+# number of bits to represent integers from 0 up to n-1
+def bits(n):
+  assert n>0
+  b = maxv = 1
+  while(maxv<n-1):
+    b +=1
+    maxv = 1+2*maxv
+  return b
+
+
+# check if the files source.ext0 source.ext1 have to be generated 
+def need_rebuild(source,*exts):
+  assert os.path.exists(source), "Missing source: " + source
+  for ext in exts:
+    dest = source + ext
+    if not os.path.exists(dest):
+      return True           #one destination missing: we need to build it
+    # rebuild if dest is older   
+    if os.path.getmtime(dest) < os.path.getmtime(source):
+      return True
+  # all dependencies exists and are more recent than the source 
+  return False 
+
+def need_rebuild_multipart(source,num,*exts):
+  assert os.path.exists(source), "Missing source: " + source
+  for ext in exts:
+    for i in range(num):
+      newext = filext_multipart(num,i) + ext
+      if need_rebuild(source,newext):
+        return True
+  # all dependencies exists and are more recent than the source 
+  return False 
+
+# return the extension for multipart file
+def filext_multipart(n,i):
+  assert i<n, "Illegal parameters"
+  if n==1:
+    return ""
+  return ".{tot}.{part}".format(tot=n,part=i)
+
+
+if __name__ == '__main__':
+  main()

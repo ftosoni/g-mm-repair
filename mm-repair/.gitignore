@@ -1,0 +1,30 @@
+# Compiled binaries
+*.exe
+*.o
+ans/encode.x
+sdsl/encode.x
+bin2csrv
+bin2csrvf
+bin2csrvi
+bin2csv
+bin2csvf
+csvmat2csrv
+csrvmm
+re32mm
+reivmm
+remm
+reans32mm
+pagerank/repagerank
+pagerank/repagerank_old
+pagerank/reivpagerank
+pagerank/re32pagerank
+pagerank/csrvpagerank
+pagerank/reans32pagerank
+
+# brepair executables
+brepair/irepair
+brepair/irepair0
+brepair/idespair
+brepair/despair
+brepair/toint
+brepair/repair
