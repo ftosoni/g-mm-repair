@@ -1,6 +1,6 @@
 # Reproducibility Guide for "Streaming Right Multiplication over Grammar-Compressed Matrices"
 
-This document provides step-by-step instructions to reproduce **all and only** the tables and figures presented in the manuscript. The manuscript reports two experiment families: **genotype matrices** (1000 Genomes + synthetic haplotypes, `PlusTimes` semiring) and **knowledge-graph relation matrices** (Wikidata relations, `Boolean`/`Tropical` semirings). No machine-learning matrices (e.g. `higgs`, `covtype`) are used in the manuscript and they are intentionally excluded here.
+This document provides step-by-step instructions to reproduce **all and only** the tables and figures presented in the manuscript. The manuscript reports two experiment families: **genotype matrices** (1000 Genomes + synthetic haplotypes, `PlusTimes` semiring) and **knowledge-graph relation matrices** (Wikidata relations, `Boolean`/`Tropical` semirings).
 
 These experiments were originally profiled and measured on a remote prototyping node (**NVIDIA Grace-Blackwell GB10 node**, featuring unified coherent CPU-GPU memory of 119 GiB, CUDA 13.0, g++ 13.3, and Ubuntu 24.04 LTS). Per the manuscript (§ Limitations), time/energy figures are board-dependent; the structural figures ($|\mathcal{R}|$, $L$, $w^{*}$, $+\text{pt}$) are architecture-independent and reproducible on any host.
 
