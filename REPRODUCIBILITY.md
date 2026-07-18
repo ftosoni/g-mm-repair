@@ -23,6 +23,8 @@ The complete inventory of manuscript artifacts this guide reproduces:
 
 (The remaining figures — `fig:matrix`, `fig:mmr_rs`, `fig:dag`, `fig:completion`, `fig:sweep`, `fig:trace` — are schematic TikZ/`includegraphics` illustrations of the running example, not measured results, and require no experiment to regenerate.)
 
+> **Reproduction flow.** In order: **§1** compile the binaries → **§2** build/download the datasets (skip if already on the node) → **`./reproduce.sh all`**, which runs every core experiment into `manuscript/logs/`, then regenerates the tables (`manuscript/tables/*.tex`) and figure data (`manuscript/figures/data/*.dat`) via `extract_results.py`. `reproduce.sh` and its canonical logs are the source of truth; the per-table commands in §3 are the manual equivalents of what it automates, and §4 documents the log→artifact mapping. Three heavy families (`grammar`, `graphscale`, `crosscheck`) are **not** in `all` and are run on demand (§3/§4).
+
 ---
 
 ## 1. Compilation
@@ -254,12 +256,12 @@ and the cuSPARSE CSR SpMV column. Results are saved to `manuscript/logs/bio_resu
 ### Table 3: Genotype Space & Energy vs. cuSPARSE (incl. crossover)
 Execute the space/energy benchmark over the genotype matrices plus `crossover_synth`:
 ```bash
-python3 run_space_energy.py
+./reproduce.sh space
 ```
-This compiles the comparative table (analytic device bytes, measured peak bytes, time, and GPU energy mJ/vector) for the grammar engine vs. cuSPARSE CSR, and stores raw results in `manuscript/logs/space_energy_results.txt`. **Note:** ensure the `datasets` list inside `run_space_energy.py` is set to the 11 genotype matrices plus `crossover_synth` (rows/cols per the tables above) — the script must not be pointed at any non-manuscript matrices. `crossover_synth` is the billion-nnz scale probe: cuSPARSE's CSR ($\approx 10.3$ GB) now fits and runs, while the engine reports its $1.30$ GB analytic / $1.59$ GB peak footprint ($\approx 7.9\times$ smaller).
+This runs `gpu_test` and `cusparse_test` per dataset (analytic device bytes, measured peak bytes, time, and GPU energy mJ/vector, grammar engine vs. cuSPARSE CSR) and writes the canonical log `manuscript/logs/geno_space_energy.log` — the file `extract_results.py` reads for this table. (The standalone `run_space_energy.py` driver is an alternate front-end that writes `manuscript/logs/space_energy_raw.txt`; it is *not* the canonical log and is not consumed by the extractor.) `crossover_synth` is the billion-nnz scale probe: cuSPARSE's CSR ($\approx 8.03$ GB) now fits and runs, while the engine reports its $1.01$ GB analytic / $0.98$ GB peak footprint ($\approx 8.0\times$ smaller).
 
 ### Table 4: Batched Right Product (SpMM, $Y=MX$)
-Run the GPU engine in batched mode (7th arg $B$) and cuSPARSE SpMM, sweeping batch sizes ($B = 32, 64, 128, 256$) and recording the best per-vector time:
+Run the GPU engine in batched mode (7th arg $B$) and cuSPARSE SpMM, sweeping batch sizes ($B = 16, 32, 64, 128, 256$, as in `reproduce.sh spmm`) and recording the best per-vector time:
 ```bash
 # Grammar engine, batched (example: geno22full, B=32):
 ./gpu-engine/gpu_test mm-repair/data/geno22full 2504 1055454 100 repair 32
@@ -335,11 +337,13 @@ run experiment  ->  manuscript/logs/<experiment>.log   (raw, provenance-headed, 
                 ->  pdflatex fig_*.tex        ->  manuscript/figures/fig_*.pdf
 ```
 
-**One command (on the GB10 node)** runs every experiment into its canonical log, then extracts and plots:
+**One command (on the GB10 node)** runs the core experiment families into their canonical logs, then extracts and plots:
 ```bash
-./reproduce.sh all
+./reproduce.sh all      # = struct + time + space + spmm + graph, then extract + plot
 ```
 Or run a single stage: `./reproduce.sh {struct|time|space|spmm|graph}` re-runs one experiment family; `./reproduce.sh extract` re-derives all tables/figure-data from the **existing** logs without recomputing; `./reproduce.sh plot` recompiles the TikZ figures.
+
+Three heavy families are **not** part of `all` and are run on demand: `./reproduce.sh grammar` (→ `grammar_build.log`, Table B grammar column), `./reproduce.sh graphscale` (→ `graph_scale.log`, Table 7), and `./reproduce.sh crosscheck` (→ `crosscheck.log`, cross-implementation correctness). The GraphBLAS and cuGraph baseline logs are produced separately by `gb_run.sh` / `cg_run.sh` (§ *Table 6 baselines*).
 
 ### Canonical logs (kept under `manuscript/logs/`, gitignored)
 Every log begins with a provenance header (date, host, git commit) and separates datasets with `## <key>` markers so a single parser can slice it. Log → artifact map:
@@ -354,6 +358,14 @@ Every log begins with a provenance header (date, host, git commit) and separates
 | `manuscript/logs/graph_struct.log` | Table 5 (`tab:graph_struct`) | `reproduce.sh struct` |
 | `manuscript/logs/graph_semiring.log` | Table 6 (`tab:graph`) | `reproduce.sh graph` |
 | `manuscript/logs/graph_scale.log` | Table 7 (`tab:graph_scale`) | `reproduce.sh graphscale` |
+
+The following logs are **not** parsed by `extract_results.py` (they back correctness claims and baselines, not table cells), but are kept alongside the canonical logs for completeness:
+
+| Log | Role | Produced by |
+|---|---|---|
+| `manuscript/logs/crosscheck.log` | Cross-implementation correctness (§2.F); certifies the full SWH graph bit-for-bit | `reproduce.sh crosscheck` |
+| `manuscript/logs/graphblas_bench.log` | Standalone SuiteSparse:GraphBLAS baseline (Table 6's GB numbers are extracted from `graph_semiring.log`, which embeds the same run) | `gb_run.sh` |
+| `manuscript/logs/cugraph_bench.log` | cuGraph BFS/SSSP end-to-end reference, discussed in the manuscript (§ Limitations) | `cg_run.sh` |
 
 ### Host-side construction cost (Table B / `tab:build`)
 `tab:build` reports **two distinct, additive** host construction costs per genotype matrix:
