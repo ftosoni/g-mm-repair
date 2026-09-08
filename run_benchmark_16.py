@@ -72,6 +72,18 @@ def main():
         sys.exit(1)
 
     # 2. Build the grammar with 16 blocks using matrepair
+    # The 16-block grammar (mm_16 column) is rebuilt from the bare int32 dense, which
+    # matrepair stats as its source even in lazy (-y) mode. The Zenodo package ships the
+    # dense zstd-compressed (<base>.zst), so inflate it on demand if the bare file is
+    # absent -- keeps run_all_bio_baselines.sh working out-of-the-box on the package.
+    if not os.path.exists(matrix_base) and os.path.exists(matrix_base + ".zst"):
+        print(f"-> Bare dense '{matrix_base}' missing; decompressing {matrix_base}.zst ...")
+        try:
+            subprocess.run(["zstd", "-d", "-k", "-f", matrix_base + ".zst"], check=True)
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            print(f"Error decompressing {matrix_base}.zst: {e}")
+            sys.exit(1)
+
     print("\n[2/4] Constructing RePair grammar with 16 row-blocks (16 threads)...")
     matrepair_cmd = [
         "python3", "matrepair", "-r", "-b", "16", "-p", "16",

@@ -71,7 +71,7 @@ populate it:
 
 If the datasets are already compiled and stored on the test server, you can skip this step.
 
-**Python prerequisites:** `pip install numpy msprime==1.4.2` (msprime drives the synthetic genotype simulation in §B/§C; the VCF path in §A additionally needs `pysam`/`cyvcf2` per `vcf2mat.py`). The synthetic matrices are bit-for-bit reproducible only under the msprime version they were generated with — **`msprime==1.4.2`** (tskit 1.0.3, numpy 2.5.1); a different msprime release may change the coalescent RNG stream for the same seed.
+**Python prerequisites:** `pip install numpy msprime==1.4.2` (msprime drives the synthetic genotype simulation in §B/§C; the VCF path in §A needs only `numpy` — `vcf2mat.py` reads the `.vcf.gz` with Python's standard-library `gzip`, no `pysam`/`cyvcf2`). The synthetic matrices are bit-for-bit reproducible only under the msprime version they were generated with — **`msprime==1.4.2`** (tskit 1.0.3, numpy 2.5.1); a different msprime release may change the coalescent RNG stream for the same seed.
 
 ### A. Real Genotypes (1000 Genomes) — Chr20, Chr21, Chr22
 The manuscript uses three human chromosomes, each at a $10^5$-variant subset and at full width. Download the phase-3 VCFs and slice them with `vcf2mat.py` into `zenodo/genotypes/`:
