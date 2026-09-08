@@ -55,7 +55,7 @@ cd ..
 
 If datasets are already compiled and stored on the test server, you can skip this step. Otherwise, follow these instructions. All matrices use the same dense-int32 format consumed by `mm-repair`.
 
-**Python prerequisites:** `pip install numpy msprime` (msprime drives the synthetic genotype simulation in §B/§C; the VCF path in §A additionally needs `pysam`/`cyvcf2` per `vcf2mat.py`).
+**Python prerequisites:** `pip install numpy msprime==1.4.2` (msprime drives the synthetic genotype simulation in §B/§C; the VCF path in §A additionally needs `pysam`/`cyvcf2` per `vcf2mat.py`). The synthetic matrices are bit-for-bit reproducible only under the msprime version they were generated with — **`msprime==1.4.2`** (tskit 1.0.3, numpy 2.5.1); a different msprime release may change the coalescent RNG stream for the same seed.
 
 ### A. Real Genotypes (1000 Genomes) — Chr20, Chr21, Chr22
 The manuscript uses three human chromosomes, each at a $10^5$-variant subset and at full width. `prepare_bio_datasets.py` automates Chr20/Chr21 (and the synthetic sets in §B); reproduce **Chr22** the same way. Download the phase-3 VCFs and slice them with `vcf2mat.py`:
@@ -81,7 +81,7 @@ Resulting matrices and dimensions (rows = 2504 samples):
 | `geno20full` | 2504 | 1739315 |
 
 ### B. Synthetic Genotypes (Haplotypes)
-The five synthetic configurations are simulated under the **coalescent with recombination** using [`msprime`](https://tskit.dev/msprime/) (`pip install msprime`), a standard, citable population-genetic simulator [Kelleher et al. 2016; Baumdicker et al. 2022]. Linkage disequilibrium is controlled by the recombination rate (low rate = long shared haplotype blocks = high LD = highly compressible), and every matrix is reproducible from a fixed `--seed`. `prepare_bio_datasets.py` runs all five; the explicit commands are:
+The five synthetic configurations are simulated under the **coalescent with recombination** using [`msprime`](https://tskit.dev/msprime/) (`pip install msprime==1.4.2`), a standard, citable population-genetic simulator [Kelleher et al. 2016; Baumdicker et al. 2022]. Linkage disequilibrium is controlled by the recombination rate (low rate = long shared haplotype blocks = high LD = highly compressible), and every matrix is reproducible from a fixed `--seed`. `prepare_bio_datasets.py` runs all five; the explicit commands are:
 ```bash
 # args: <rows> <cols> <out_matrix> [recomb_rate] [seed] [Ne] [mu]   (seed=42 fixed for reproducibility)
 python3 generate_msprime.py 2000  50000  mm-repair/data/geno_synth_small     1e-8 42   # synth_small
