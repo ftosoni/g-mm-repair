@@ -53,22 +53,45 @@ cd ..
 
 ## 2. Dataset Preparation
 
-If datasets are already compiled and stored on the test server, you can skip this step. Otherwise, follow these instructions. All matrices use the same dense-int32 format consumed by `mm-repair`.
+All datasets live in a single subfolder of this repo, `zenodo/`, laid out as
+`zenodo/genotypes/`, `zenodo/wikidata/`, `zenodo/swh/` — this is exactly what `reproduce.sh`
+reads (override the location with `ZENODO_DIR=/path/to/package`). There are two ways to
+populate it:
+
+- **Recommended — download the Zenodo data package** (doi:10.5281/zenodo.XXXXXXX) and extract
+  it into `zenodo/`. It already contains every grammar (`.vc.C`, `.vc.R`, `.val`, …) and the
+  Wikidata `.sparse` edge lists, so `./reproduce.sh crosscheck` / `struct` / `space` / `spmm` /
+  `graph` run directly. The dense matrices ship zstd-compressed; decompress them only if you
+  intend to *rebuild* a grammar (`./reproduce.sh grammar`) or run the from-scratch steps below:
+  ```bash
+  for f in zenodo/genotypes/*.zst zenodo/swh/*.zst; do zstd -d -k "$f"; done   # -> raw <base> alongside the grammar
+  ```
+- **From scratch** — rebuild the same files into the same layout with the commands in §A–§E
+  below. All matrices use the same dense-int32 format consumed by `mm-repair`.
+
+If the datasets are already compiled and stored on the test server, you can skip this step.
 
 **Python prerequisites:** `pip install numpy msprime==1.4.2` (msprime drives the synthetic genotype simulation in §B/§C; the VCF path in §A additionally needs `pysam`/`cyvcf2` per `vcf2mat.py`). The synthetic matrices are bit-for-bit reproducible only under the msprime version they were generated with — **`msprime==1.4.2`** (tskit 1.0.3, numpy 2.5.1); a different msprime release may change the coalescent RNG stream for the same seed.
 
 ### A. Real Genotypes (1000 Genomes) — Chr20, Chr21, Chr22
-The manuscript uses three human chromosomes, each at a $10^5$-variant subset and at full width. `prepare_bio_datasets.py` automates Chr20/Chr21 (and the synthetic sets in §B); reproduce **Chr22** the same way. Download the phase-3 VCFs and slice them with `vcf2mat.py`:
+The manuscript uses three human chromosomes, each at a $10^5$-variant subset and at full width. Download the phase-3 VCFs and slice them with `vcf2mat.py` into `zenodo/genotypes/`:
 ```bash
-# Chr22 (running-example chromosome; geno22 / geno22full)
-wget -O geno/chr22.vcf.gz \
-  https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz
-python3 geno/vcf2mat.py geno/chr22.vcf.gz mm-repair/data/geno22     100000
-python3 geno/vcf2mat.py geno/chr22.vcf.gz mm-repair/data/geno22full 1500000   # yields 1,055,454 cols
-
-# Chr20 + Chr21 + the synthetic genotypes of §B (downloads VCFs, runs vcf2mat, writes .val files):
-python3 prepare_bio_datasets.py
+mkdir -p zenodo/genotypes
+B=https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502
+for chr in 20 21 22; do
+  wget -O zenodo/genotypes/chr$chr.vcf.gz \
+    $B/ALL.chr$chr.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz
+done
+# 100K-variant subset and full width (full width is capped high; the actual col count is printed):
+python3 vcf2mat.py zenodo/genotypes/chr22.vcf.gz zenodo/genotypes/geno22     100000
+python3 vcf2mat.py zenodo/genotypes/chr22.vcf.gz zenodo/genotypes/geno22full 1500000   # -> 1,055,454 cols
+python3 vcf2mat.py zenodo/genotypes/chr21.vcf.gz zenodo/genotypes/geno21     100000
+python3 vcf2mat.py zenodo/genotypes/chr21.vcf.gz zenodo/genotypes/geno21full 1500000   # -> 1,054,447 cols
+python3 vcf2mat.py zenodo/genotypes/chr20.vcf.gz zenodo/genotypes/geno20     100000
+python3 vcf2mat.py zenodo/genotypes/chr20.vcf.gz zenodo/genotypes/geno20full 2000000   # -> 1,739,315 cols
 ```
+(`prepare_bio_datasets.py` is the authors' batch helper for the same steps, but its paths are hardcoded to the authors' `mm-grammar-gpu/` checkout — use the explicit commands above, or the Zenodo download.)
+
 Resulting matrices and dimensions (rows = 2504 samples):
 
 | base | rows | cols |
@@ -81,25 +104,34 @@ Resulting matrices and dimensions (rows = 2504 samples):
 | `geno20full` | 2504 | 1739315 |
 
 ### B. Synthetic Genotypes (Haplotypes)
-The five synthetic configurations are simulated under the **coalescent with recombination** using [`msprime`](https://tskit.dev/msprime/) (`pip install msprime==1.4.2`), a standard, citable population-genetic simulator [Kelleher et al. 2016; Baumdicker et al. 2022]. Linkage disequilibrium is controlled by the recombination rate (low rate = long shared haplotype blocks = high LD = highly compressible), and every matrix is reproducible from a fixed `--seed`. `prepare_bio_datasets.py` runs all five; the explicit commands are:
+The five synthetic configurations are simulated under the **coalescent with recombination** using [`msprime`](https://tskit.dev/msprime/) (`pip install msprime==1.4.2`), a standard, citable population-genetic simulator [Kelleher et al. 2016; Baumdicker et al. 2022]. Linkage disequilibrium is controlled by the recombination rate (low rate = long shared haplotype blocks = high LD = highly compressible), and every matrix is reproducible from a fixed `--seed`:
 ```bash
 # args: <rows> <cols> <out_matrix> [recomb_rate] [seed] [Ne] [mu]   (seed=42 fixed for reproducibility)
-python3 generate_msprime.py 2000  50000  mm-repair/data/geno_synth_small     1e-8 42   # synth_small
-python3 generate_msprime.py 5000  200000 mm-repair/data/geno_synth_large     1e-8 42   # synth_large
-python3 generate_msprime.py 5000  100000 mm-repair/data/geno_synth_ld_high   1e-9 42   # synth_ld_high (low recomb -> high LD)
-python3 generate_msprime.py 5000  100000 mm-repair/data/geno_synth_ld_low    1e-7 42   # synth_ld_low  (high recomb -> low LD)
-python3 generate_msprime.py 10000 50000  mm-repair/data/geno_synth_ind_large 1e-8 42   # synth_ind_large
+python3 generate_msprime.py 2000  50000  zenodo/genotypes/geno_synth_small     1e-8 42   # synth_small
+python3 generate_msprime.py 5000  200000 zenodo/genotypes/geno_synth_large     1e-8 42   # synth_large
+python3 generate_msprime.py 5000  100000 zenodo/genotypes/geno_synth_ld_high   1e-9 42   # synth_ld_high (low recomb -> high LD)
+python3 generate_msprime.py 5000  100000 zenodo/genotypes/geno_synth_ld_low    1e-7 42   # synth_ld_low  (high recomb -> low LD)
+python3 generate_msprime.py 10000 50000  zenodo/genotypes/geno_synth_ind_large 1e-8 42   # synth_ind_large
 ```
 
 ### C. Large-scale / crossover matrix (Table 3, Figure 3)
 The large crossover matrix (`crossover_synth`, $10{,}000 \times 700{,}000$, $\approx 1.00$ B nnz) is our billion-nonzero scale probe. Its CSR needs $\approx 8.0$ GB, which fits on the GB10's 119 GiB unified pool, so **cuSPARSE runs** (48.38 ms/vec, 1976 mJ/vec); the grammar engine stays resident at $1.01$ GB analytic / $0.98$ GB peak ($\approx 8.0\times$ smaller, $2.41\times$ faster, $3.15\times$ lower energy). Generated with the same `msprime` simulator as §B (this is a large run — the dense matrix is ~28 GB; produce it on the GB10 node's 119 GiB unified memory):
 ```bash
-python3 generate_msprime.py 10000 700000 mm-repair/data/crossover_synth 1e-8 42
+python3 generate_msprime.py 10000 700000 zenodo/genotypes/crossover_synth 1e-8 42
+```
+
+**`.val` value arrays (genotypes only).** `vcf2mat.py`/`generate_msprime.py` write the dense matrix but not the tiny `.val` file (the distinct-values array `{1.0, 2.0}` the engine reads for the `PlusTimes` semiring). Create one per genotype base (the Zenodo download already includes them):
+```bash
+for b in geno22 geno22full geno21 geno21full geno20 geno20full \
+         geno_synth_small geno_synth_large geno_synth_ld_high geno_synth_ld_low \
+         geno_synth_ind_large crossover_synth; do
+  python3 -c "import struct,sys; open(sys.argv[1],'wb').write(struct.pack('dd',1.0,2.0))" zenodo/genotypes/$b.val
+done
 ```
 
 > ✅ **`crossover_synth` host-build cost (measured, node `spark-a459`).** The timed single-block grammar build
 > ```bash
-> ./mm-repair/matrepair -r --i32 mm-repair/data/crossover_synth 10000 700000
+> ./mm-repair/matrepair -r --i32 zenodo/genotypes/crossover_synth 10000 700000
 > ```
 > takes **634.1 s total** (RePair 566.4 s + CSRV conversion 56.6 s) and yields a serialized grammar of **REANS 194.7 MB / RE32 250.7 MB** (the `>> REANS size` / `>> RE32 size` fields of the Compression Report; the lazy `-r -y` variant re-prints them without rebuilding). The space/energy/time figures above are read from the `## crossover_synth` block of `manuscript/logs/geno_space_energy.log` (produced by `reproduce.sh space`), and the run **self-verifies against the CPU reference within float precision** (`max_rel_diff` $\approx 9.4\mathrm{e}{-7}$; this is a $(+,\times)$ float run, so it is not bit-for-bit — that holds for the Boolean/Tropical semirings) — $10{,}000$ rows is below the driver's 30M-row CPU-ref threshold (`gpu_engine_test.cu:377`).
 
@@ -108,19 +140,21 @@ The graph datasets are obtained from Zenodo: [10.5281/zenodo.7254968](https://ze
 
 **Wikidata (5 relations).** Download `wikidata.tar.gz` (4.95 GB), unpack to get `wikidata-enumerated.dat` (20 GB triples) + `.dat.P`. Wikidata relations have millions of subjects, so the **dense** builder is infeasible; use the **sparse** path (`sparse` mode → `matrepair --bool`), which never materializes the dense matrix. One pass emits all five `<name>.sparse` (`row col`) edge lists, then RePair compresses each:
 ```bash
-tar -xzf wikidata.tar.gz
+mkdir -p zenodo/wikidata && tar -xzf wikidata.tar.gz
 
 # 1. One-pass sparse extraction (predicate IDs are for this specific Zenodo dump):
 python3 process_wikidata.py wikidata-enumerated.dat wikidata-enumerated.dat.P sparse \
   1107:wd_sports_team 708:wd_cast_member 205:wd_citizenship 206:wd_occupation 196:wd_subclass_of
 
-# 2. Compress each into a grammar (rename to a clean base, then --bool = textual "row col" nonzeros):
-for b in wd_sports_team wd_cast_member wd_citizenship wd_occupation wd_subclass_of; do cp -f $b.sparse $b; done
-./mm-repair/matrepair -r --bool wd_sports_team 332121  29854
-./mm-repair/matrepair -r --bool wd_cast_member 173977  144095
-./mm-repair/matrepair -r --bool wd_citizenship 2874250 2556
-./mm-repair/matrepair -r --bool wd_occupation  3459933 10610
-./mm-repair/matrepair -r --bool wd_subclass_of 1487709 73417
+# 2. Move each .sparse into the package and compress it into a grammar
+#    (the base path == the .sparse; --bool = textual "row col" nonzeros):
+for b in wd_sports_team wd_cast_member wd_citizenship wd_occupation wd_subclass_of; do
+  mv -f $b.sparse zenodo/wikidata/$b.sparse; cp -f zenodo/wikidata/$b.sparse zenodo/wikidata/$b; done
+./mm-repair/matrepair -r --bool zenodo/wikidata/wd_sports_team 332121  29854
+./mm-repair/matrepair -r --bool zenodo/wikidata/wd_cast_member 173977  144095
+./mm-repair/matrepair -r --bool zenodo/wikidata/wd_citizenship 2874250 2556
+./mm-repair/matrepair -r --bool zenodo/wikidata/wd_occupation  3459933 10610
+./mm-repair/matrepair -r --bool zenodo/wikidata/wd_subclass_of 1487709 73417
 ```
 Wikidata relation dimensions (rows = subjects, cols = objects):
 
@@ -136,9 +170,10 @@ Wikidata relation dimensions (rows = subjects, cols = objects):
 ```bash
 python3 process_wikidata.py wikidata-enumerated.dat wikidata-enumerated.dat.P sparse \
   159:wd_country 2831:wd_cites_work
-for b in wd_country wd_cites_work; do cp -f $b.sparse $b; done
-./mm-repair/matrepair -r --bool wd_country    10058956 1747        # P17  country      (10.1M edges)
-./mm-repair/matrepair -r --bool wd_cites_work 7072574  12245945    # P2860 cites-work  (166.7M edges)
+for b in wd_country wd_cites_work; do
+  mv -f $b.sparse zenodo/wikidata/$b.sparse; cp -f zenodo/wikidata/$b.sparse zenodo/wikidata/$b; done
+./mm-repair/matrepair -r --bool zenodo/wikidata/wd_country    10058956 1747        # P17  country      (10.1M edges)
+./mm-repair/matrepair -r --bool zenodo/wikidata/wd_cites_work 7072574  12245945    # P2860 cites-work  (166.7M edges)
 ```
 
 | base | Wikidata property | rows | cols | nnz |
@@ -155,18 +190,20 @@ cd ~/swh-work
 B=https://softwareheritage.s3.amazonaws.com/graph/2021-03-23-popular-3k-python/compressed
 # 1. Topology only (~430 MB): graph.graph/.offsets/.obl/.properties (+ the *.count.txt/stats)
 for f in graph.graph graph.offsets graph.obl graph.properties; do curl -s -O "$B/$f"; done
-# 2. Dump the forward DAG as a row-major "src dst" edge list (WebGraph-big, memory-mapped):
-export JAVA_HOME=~/swh-work/jdk && export PATH=$JAVA_HOME/bin:$PATH
-javac -cp "jars/*" Dump.java && java -Xmx6g -cp "jars/*:." Dump graph swh_full     # 1.22 G edges, ~2 min
-# 3. RePair-compress (no dense matrix; --bool = textual "row col" nonzeros):
+# 2. Dump the forward DAG as a row-major "src dst" edge list, straight into the package
+#    (WebGraph-big, memory-mapped). SW = <repo>/zenodo/swh :
 REPO=/path/to/g-mm-repair    # absolute path to your checkout
-$REPO/mm-repair/matrepair -r --bool swh_full 45691499 45691499                      # REANS 490 MB, 3.22 bpe
+SW=$REPO/zenodo/swh && mkdir -p "$SW" && cp -f graph.properties "$SW/"
+export JAVA_HOME=~/swh-work/jdk && export PATH=$JAVA_HOME/bin:$PATH
+javac -cp "jars/*" Dump.java && java -Xmx6g -cp "jars/*:." Dump graph "$SW/swh_full"   # 1.22 G edges, ~2 min
+# 3. RePair-compress (no dense matrix; --bool = textual "row col" nonzeros):
+$REPO/mm-repair/matrepair -r --bool "$SW/swh_full" 45691499 45691499                   # REANS 490 MB, 3.22 bpe
 # 4. Structural check + Boolean device footprint:
 export PATH=/usr/local/cuda/bin:$PATH
-SEMIRING=boolean $REPO/gpu-engine/gpu_test swh_full 45691499 45691499 1 repair       # struct + device footprint (CPU ref auto-skipped >30M rows)
+SEMIRING=boolean $REPO/gpu-engine/gpu_test "$SW/swh_full" 45691499 45691499 1 repair    # struct + device footprint (CPU ref auto-skipped >30M rows)
 # The >30M skip is a speed guard, not a hard limit. To certify the *full* published graph
 # bit-for-bit, force the CPU oracle on (slow, ~1.5 s/vector CPU seq, one-off):
-FORCE_CPU_VERIFY=1 SEMIRING=boolean $REPO/gpu-engine/gpu_test swh_full 45691499 45691499 1 repair
+FORCE_CPU_VERIFY=1 SEMIRING=boolean $REPO/gpu-engine/gpu_test "$SW/swh_full" 45691499 45691499 1 repair
 # The crosscheck driver runs exactly this (Boolean, FORCE_CPU_VERIFY) plus cuSPARSE/CPU-CSR: ./reproduce.sh crosscheck
 ```
 SWH dimensions and grammar/space figures (rows = cols = shared artifact node space):
@@ -226,10 +263,10 @@ XVEC=x.bin CROSSCHECK=out ./gpu-engine/gpu_test <base> <rows> <cols> 1 repair
 The structural metrics (base rule count $|\mathcal{R}|$, depth $L$, maximum streaming width $w^{*}$, and pass-through nodes $+\text{pt}$) are computed by the host scheduler during graph loading and are architecture-independent. Run the test driver on each base path and read the layout from stdout:
 ```bash
 # Table 1 — each genotype base (example shown for geno21):
-./gpu-engine/gpu_test mm-repair/data/geno21 2504 100000 1
+./gpu-engine/gpu_test zenodo/genotypes/geno21 2504 100000 1
 
 # Table 5 — each Wikidata relation:
-./gpu-engine/gpu_test wd_sports_team 332121 29854 1        # repeat for the 5 wd_* relations (dims above)
+./gpu-engine/gpu_test zenodo/wikidata/wd_sports_team 332121 29854 1    # repeat for the 5 wd_* relations (dims above)
 ```
 The driver prints one structural line, e.g.:
 `Max depth (L): 6, Max width (w*): 49298, Total layered rules: 80896 (raw NTs: 70158, +pt: 10738)`
@@ -264,10 +301,10 @@ This runs `gpu_test` and `cusparse_test` per dataset (analytic device bytes, mea
 Run the GPU engine in batched mode (7th arg $B$) and cuSPARSE SpMM, sweeping batch sizes ($B = 16, 32, 64, 128, 256$, as in `reproduce.sh spmm`) and recording the best per-vector time:
 ```bash
 # Grammar engine, batched (example: geno22full, B=32):
-./gpu-engine/gpu_test mm-repair/data/geno22full 2504 1055454 100 repair 32
+./gpu-engine/gpu_test zenodo/genotypes/geno22full 2504 1055454 100 repair 32
 
 # cuSPARSE SpMM — sweeps ALG_DEFAULT / CSR_ALG2 / CSR_ALG3; CSR_ALG3 is the non-degrading baseline:
-./gpu-engine/cusparse_test mm-repair/data/geno22full 2504 1055454 100 repair 32
+./gpu-engine/cusparse_test zenodo/genotypes/geno22full 2504 1055454 100 repair 32
 ```
 Repeat for all 6 real + 5 synthetic genotype matrices (dimensions per §A/§B).
 
@@ -276,11 +313,11 @@ Set the `SEMIRING` environment variable and run `gpu_test` (single-vector and ba
 ```bash
 # --- Wikidata ---
 for sr in boolean tropical; do
-  SEMIRING=$sr ./gpu-engine/gpu_test wd_sports_team 332121  29854  50 repair 16
-  SEMIRING=$sr ./gpu-engine/gpu_test wd_cast_member 173977  144095 50 repair 16
-  SEMIRING=$sr ./gpu-engine/gpu_test wd_citizenship 2874250 2556   50 repair 16
-  SEMIRING=$sr ./gpu-engine/gpu_test wd_occupation  3459933 10610  50 repair 16
-  SEMIRING=$sr ./gpu-engine/gpu_test wd_subclass_of 1487709 73417  50 repair 16
+  SEMIRING=$sr ./gpu-engine/gpu_test zenodo/wikidata/wd_sports_team 332121  29854  50 repair 16
+  SEMIRING=$sr ./gpu-engine/gpu_test zenodo/wikidata/wd_cast_member 173977  144095 50 repair 16
+  SEMIRING=$sr ./gpu-engine/gpu_test zenodo/wikidata/wd_citizenship 2874250 2556   50 repair 16
+  SEMIRING=$sr ./gpu-engine/gpu_test zenodo/wikidata/wd_occupation  3459933 10610  50 repair 16
+  SEMIRING=$sr ./gpu-engine/gpu_test zenodo/wikidata/wd_subclass_of 1487709 73417  50 repair 16
 done
 ```
 The CPU reference (sequential and OpenMP) and the cuSPARSE Boolean CSR baseline reported in the table are produced by the same driver; results are verified bit-for-bit against the CPU reference (all five relations pass).
@@ -295,8 +332,8 @@ python3 -m venv gbvenv && ./gbvenv/bin/pip install python-graphblas
 chmod +x gb_run.sh && ./gb_run.sh > manuscript/logs/graphblas_bench.log 2>&1
 # Or run manually:
 # args: <sparse_file> <rows> <cols> <bool|tropical> [iters]
-./gbvenv/bin/python graphblas_bench.py wd_sports_team.sparse 332121 29854 bool 50
-./gbvenv/bin/python graphblas_bench.py wd_sports_team.sparse 332121 29854 tropical 50
+./gbvenv/bin/python graphblas_bench.py zenodo/wikidata/wd_sports_team.sparse 332121 29854 bool 50
+./gbvenv/bin/python graphblas_bench.py zenodo/wikidata/wd_sports_team.sparse 332121 29854 tropical 50
 #   (repeat for the 5 Wikidata relations; dims per §2.D)
 
 # --- cuGraph (GPU end-to-end BFS/SSSP; RAPIDS cu12 wheels) ---
@@ -306,17 +343,17 @@ python3 -m venv cgvenv
 chmod +x cg_run.sh && ./cg_run.sh > manuscript/logs/cugraph_bench.log 2>&1
 # Or run manually (RAPIDS pip wheels need their bundled libs on the loader path):
 export LD_LIBRARY_PATH="$(find cgvenv/lib/python3.12/site-packages -type d \( -name lib -o -name lib64 \) | tr '\n' ':'):/usr/local/cuda/lib64"
-./cgvenv/bin/python cugraph_bench.py wd_sports_team.sparse 332121 29854 bool 20      # BFS
-./cgvenv/bin/python cugraph_bench.py wd_sports_team.sparse 332121 29854 tropical 20  # SSSP
+./cgvenv/bin/python cugraph_bench.py zenodo/wikidata/wd_sports_team.sparse 332121 29854 bool 20      # BFS
+./cgvenv/bin/python cugraph_bench.py zenodo/wikidata/wd_sports_team.sparse 332121 29854 tropical 20  # SSSP
 ```
 Note: GraphBLAS `mxv` is one semiring mat-vec (directly comparable to the engine's single-vector sweep), whereas cuGraph BFS/SSSP run the *full* traversal to convergence (an end-to-end reference, not per mat-vec). On the node, RAPIDS is the CUDA-12 build running on CUDA 13 / `sm_121` via PTX-JIT.
 
 ### Table 7: Scale at 10M–1.2G edges (`tab:graph_scale`)
 The two largest Wikidata relations (`wd_country`, `wd_cites_work`; built in §2.D) **plus the billion-edge Software Heritage software graph** `swh_full` (§2.E). Per relation: the Boolean single-vector engine and cuSPARSE times, the engine/CSR analytic device footprints, and the serialized REANS grammar size. The `matrepair -r -y` call is *lazy* — `-y` skips recompression and just prints the size report (`>> REANS size: N bytes`) from the existing grammar, so it is fast:
 ```bash
-# Wikidata relations live in the repo dir; swh_full lives under ~/swh-work (absolute path):
-for e in "wd_country 10058956 1747" "wd_cites_work 7072574 12245945" \
-         "$HOME/swh-work/swh_full 45691499 45691499"; do set -- $e
+# All three live in the Zenodo package layout (zenodo/wikidata, zenodo/swh):
+for e in "zenodo/wikidata/wd_country 10058956 1747" "zenodo/wikidata/wd_cites_work 7072574 12245945" \
+         "zenodo/swh/swh_full 45691499 45691499"; do set -- $e
   SEMIRING=boolean ./gpu-engine/gpu_test  "$1" "$2" "$3" 50 repair   # struct, eng dev MB, Bool eng ms
   ./gpu-engine/cusparse_test              "$1" "$2" "$3" 50          # CSR dev MB, Bool cuS ms
   ./mm-repair/matrepair -r -y --bool      "$1" "$2" "$3"             # serialized REANS size

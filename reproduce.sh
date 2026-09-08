@@ -48,37 +48,43 @@ mkdir -p "$LOGS" manuscript/tables manuscript/figures/data
 GPU=./gpu-engine/gpu_test
 CUS=./gpu-engine/cusparse_test
 
-# path rows cols   (paths mirror run_all_bio_baselines.sh / run_space_energy.py)
-GENO=(
-  "geno22|geno/geno22|2504|100000"
-  "geno22full|geno/geno22full|2504|1055454"
-  "geno21|mm-repair/data/geno21|2504|100000"
-  "geno21full|mm-repair/data/geno21full|2504|1054447"
-  "geno20|mm-repair/data/geno20|2504|100000"
-  "geno20full|mm-repair/data/geno20full|2504|1739315"
-  "geno_synth_small|mm-repair/data/geno_synth_small|2000|50000"
-  "geno_synth_large|mm-repair/data/geno_synth_large|5000|200000"
-  "geno_synth_ld_high|mm-repair/data/geno_synth_ld_high|5000|100000"
-  "geno_synth_ld_low|mm-repair/data/geno_synth_ld_low|5000|100000"
-  "geno_synth_ind_large|mm-repair/data/geno_synth_ind_large|10000|50000"
-)
-CROSSOVER="crossover_synth|mm-repair/data/crossover_synth|10000|700000"
+# Datasets live in the Zenodo data package (doi:10.5281/zenodo.XXXXXXX), extracted
+# into a subfolder of this repo -- by default ./zenodo/{genotypes,wikidata,swh}/ (the
+# record's own layout). Override with e.g. ZENODO_DIR=/path/to/package if you keep it
+# elsewhere. Each stem <ZENODO_DIR>/<cat>/<base> resolves both the grammar the engine
+# reads (<base>.vc.C, .vc.R, .val) and, once you run `zstd -d <base>.zst`, the dense
+# matrix that the grammar/space stages rebuild from.
+ZENODO_DIR=${ZENODO_DIR:-zenodo}
 
-# key path rows cols   (Wikidata relations; sparse-built grammars already on the node)
+# key path rows cols
+GENO=(
+  "geno22|$ZENODO_DIR/genotypes/geno22|2504|100000"
+  "geno22full|$ZENODO_DIR/genotypes/geno22full|2504|1055454"
+  "geno21|$ZENODO_DIR/genotypes/geno21|2504|100000"
+  "geno21full|$ZENODO_DIR/genotypes/geno21full|2504|1054447"
+  "geno20|$ZENODO_DIR/genotypes/geno20|2504|100000"
+  "geno20full|$ZENODO_DIR/genotypes/geno20full|2504|1739315"
+  "geno_synth_small|$ZENODO_DIR/genotypes/geno_synth_small|2000|50000"
+  "geno_synth_large|$ZENODO_DIR/genotypes/geno_synth_large|5000|200000"
+  "geno_synth_ld_high|$ZENODO_DIR/genotypes/geno_synth_ld_high|5000|100000"
+  "geno_synth_ld_low|$ZENODO_DIR/genotypes/geno_synth_ld_low|5000|100000"
+  "geno_synth_ind_large|$ZENODO_DIR/genotypes/geno_synth_ind_large|10000|50000"
+)
+CROSSOVER="crossover_synth|$ZENODO_DIR/genotypes/crossover_synth|10000|700000"
+
+# key path rows cols   (Wikidata relations; sparse edge list + grammar in the package)
 GRAPH=(
-  "wd_sports_team|wd_sports_team|332121|29854"
-  "wd_cast_member|wd_cast_member|173977|144095"
-  "wd_citizenship|wd_citizenship|2874250|2556"
-  "wd_occupation|wd_occupation|3459933|10610"
-  "wd_subclass_of|wd_subclass_of|1487709|73417"
+  "wd_sports_team|$ZENODO_DIR/wikidata/wd_sports_team|332121|29854"
+  "wd_cast_member|$ZENODO_DIR/wikidata/wd_cast_member|173977|144095"
+  "wd_citizenship|$ZENODO_DIR/wikidata/wd_citizenship|2874250|2556"
+  "wd_occupation|$ZENODO_DIR/wikidata/wd_occupation|3459933|10610"
+  "wd_subclass_of|$ZENODO_DIR/wikidata/wd_subclass_of|1487709|73417"
 )
 # Largest relations (tab:graph_scale); wd_cites_work (166M) and swh_full (1.22G) are heavy.
-# swh_full is the Software Heritage graph built under ~/swh-work; its grammar
-# lives outside the repo tree, hence the absolute path.
 GRAPH_SCALE=(
-  "wd_country|wd_country|10058956|1747"
-  "wd_cites_work|wd_cites_work|7072574|12245945"
-  "swh_full|$HOME/swh-work/swh_full|45691499|45691499"
+  "wd_country|$ZENODO_DIR/wikidata/wd_country|10058956|1747"
+  "wd_cites_work|$ZENODO_DIR/wikidata/wd_cites_work|7072574|12245945"
+  "swh_full|$ZENODO_DIR/swh/swh_full|45691499|45691499"
 )
 
 prov() {   # prov <logfile>  -- write a provenance header, truncating the log

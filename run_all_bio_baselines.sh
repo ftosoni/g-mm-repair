@@ -49,16 +49,18 @@ run_ds() {
     echo "$name,$gpu,$omp,$cpu_seq,$mm_seq,$mm_16" >> "$RESULTS"
 }
 
-run_ds "geno22" 2504 100000 "geno/geno22"
-run_ds "geno22full" 2504 1055454 "geno/geno22full"
-run_ds "geno21" 2504 100000 "mm-repair/data/geno21"
-run_ds "geno21full" 2504 1054447 "mm-repair/data/geno21full"
-run_ds "geno20" 2504 100000 "mm-repair/data/geno20"
-run_ds "geno20full" 2504 1739315 "mm-repair/data/geno20full"
-run_ds "geno_synth_small" 2000 50000 "mm-repair/data/geno_synth_small"
-run_ds "geno_synth_large" 5000 200000 "mm-repair/data/geno_synth_large"
-run_ds "geno_synth_ld_high" 5000 100000 "mm-repair/data/geno_synth_ld_high"
-run_ds "geno_synth_ld_low" 5000 100000 "mm-repair/data/geno_synth_ld_low"
-run_ds "geno_synth_ind_large" 10000 50000 "mm-repair/data/geno_synth_ind_large"
+# Datasets in the Zenodo package layout (override root with ZENODO_DIR=/path/to/package):
+Z=${ZENODO_DIR:-zenodo}/genotypes
+run_ds "geno22" 2504 100000 "$Z/geno22"
+run_ds "geno22full" 2504 1055454 "$Z/geno22full"
+run_ds "geno21" 2504 100000 "$Z/geno21"
+run_ds "geno21full" 2504 1054447 "$Z/geno21full"
+run_ds "geno20" 2504 100000 "$Z/geno20"
+run_ds "geno20full" 2504 1739315 "$Z/geno20full"
+run_ds "geno_synth_small" 2000 50000 "$Z/geno_synth_small"
+run_ds "geno_synth_large" 5000 200000 "$Z/geno_synth_large"
+run_ds "geno_synth_ld_high" 5000 100000 "$Z/geno_synth_ld_high"
+run_ds "geno_synth_ld_low" 5000 100000 "$Z/geno_synth_ld_low"
+run_ds "geno_synth_ind_large" 10000 50000 "$Z/geno_synth_ind_large"
 
 cat "$RESULTS"
