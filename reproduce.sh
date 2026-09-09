@@ -181,29 +181,32 @@ run_graph() {
 # ("REANS size: N bytes") from the existing grammar -- fast, no rebuild. Kept out of `all`
 # because wd_cites_work (166M edges) is a heavy scale run.
 #
-# GATE-FILE GUARD: matrepair -y still hard-depends on the bare <base> and <base>.vc as an
-# mtime/existence gate (need_rebuild), but the Zenodo package deliberately omits the large,
-# regenerable pre-RePair .vc stream (0.7 GB for wd_cites_work, 5 GB for swh_full) -- shipping it
-# would only feed matrepair's internal nonzero/CRSV/bpe lines, none of which tab:graph_scale
-# reads (it takes only the REANS *byte count* = .val + .vc.C.ansf.1 + .vc.R.iv, all shipped). So
-# when .vc is absent we synthesize the two gate files: an empty bare <base> plus a *sparse* .vc
-# sized 4*(nnz+rows) (from the NNZ cuSPARSE just reported), which also makes the report's
-# nonzero/CRSV/bpe come out correct. Both are dated in the past so the shipped grammar is always
-# newer -> -y stays fully lazy. Same spirit as run_benchmark_16.py's decompress-if-missing guard.
+# GATE-FILE GUARD: matrepair -y hard-depends on the bare <base> and <base>.vc as an
+# mtime/existence gate (need_rebuild), yet neither is read by any evaluation binary and the raw
+# .vc stream is large (0.7 GB for wd_cites_work, 5 GB for swh_full). The Zenodo package therefore
+# ships it *compressed* as <base>.vc.zst; this guard decompresses it and back-dates the two gate
+# files (bare <base> + .vc) so the shipped grammar is always newer and -y stays fully lazy (no
+# rebuild -> the non-deterministic ANS-fold is never re-run). Every line of matrepair's Compression
+# Report is then authentic. (A package rebuilt from the dense already has the real .vc from that
+# rebuild, so the guard simply does nothing.) tab:graph_scale reads only the REANS *byte count*
+# = |.val| + |.vc.C.ansf.1| + |.vc.R.iv| (all shipped), which the "REANS check" line below recomputes
+# straight from the shipped files so the number is self-evident. Same spirit as run_benchmark_16.py.
 run_graphscale() {
   local log=$LOGS/graph_scale.log; prov "$log"
   for e in "${GRAPH_SCALE[@]}"; do IFS='|' read -r key path r c <<<"$e"
     echo "## $key" | tee -a "$log"
     SEMIRING=boolean $GPU "$path" "$r" "$c" 50 repair 2>&1 | tee -a "$log"
     echo "--- CUSPARSE ---" | tee -a "$log"
-    local cout; cout=$($CUS "$path" "$r" "$c" 50 2>&1); printf '%s\n' "$cout" | tee -a "$log"
+    $CUS "$path" "$r" "$c" 50 2>&1 | tee -a "$log"
     echo "--- GRAMMAR ---" | tee -a "$log"
-    if [ ! -f "${path}.vc" ]; then    # synthesize the lazy-rebuild gate (see GATE-FILE GUARD above)
-      local nnz; nnz=$(printf '%s\n' "$cout" | sed -n 's/.*NNZ:[[:space:]]*\([0-9]\{1,\}\).*/\1/p' | head -1)
-      : > "${path}"; truncate -s "$(( 4 * (${nnz:-0} + r) ))" "${path}.vc"
-      touch -d 2000-01-01 "${path}"; touch -d 2000-01-02 "${path}.vc"
+    if [ ! -f "${path}.vc" ] && [ -f "${path}.vc.zst" ]; then    # restore matrepair -y's lazy-rebuild gate
+      zstd -dq -f -o "${path}.vc" "${path}.vc.zst"               # genuine pre-RePair stream (shipped compressed)
+      : > "${path}"                                              # bare source: existence gate only (content unread by -y)
+      touch -d 2000-01-01 "${path}"; touch -d 2000-01-02 "${path}.vc"   # back-date -> shipped grammar stays newer
     fi
     ./mm-repair/matrepair -r -y --bool "$path" "$r" "$c" 2>&1 | tee -a "$log"
+    # transparency: the paper's REANS size is a pure function of shipped files, independent of .vc
+    echo "REANS check (shipped |.val|+|.vc.C.ansf.1|+|.vc.R.iv|): $(( $(stat -L -c %s "${path}.val") + $(stat -L -c %s "${path}.vc.C.ansf.1") + $(stat -L -c %s "${path}.vc.R.iv") )) bytes" | tee -a "$log"
   done
 }
 
