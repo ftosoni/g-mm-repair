@@ -12,22 +12,22 @@ This document gives step-by-step instructions to reproduce **all and only** the 
 
 These experiments were originally profiled and measured on a remote prototyping node (**NVIDIA Grace-Blackwell GB10 node**, featuring unified coherent CPU-GPU memory of 119 GiB, CUDA 13.0, g++ 13.3, and Ubuntu 24.04 LTS). Per the manuscript (§ Limitations), time/energy figures are board-dependent; the structural figures ($|\mathcal{R}|$, $L$, $w^{*}$, $+\text{pt}$) are architecture-independent and reproducible on any host.
 
-> ✅ **Status.** Every measured table and figure in this guide is backed by a canonical log under `manuscript/logs/`. The genotype/crossover family (§A–§C, Tables 1–4, B, Figs 3–4) was regenerated end-to-end with the `msprime` simulator on node `spark-a459` (2026-07-14); the Wikidata/SWH graph logs (§D–§E, Tables 5–7) are unchanged.
+> ✅ **Status.** Every measured table and figure in this guide is backed by a canonical log under `manuscript/logs/`. The genotype/crossover family (§A–§C, Tables 4.1–4.3, A.1, B.1, Figs 4.3, A.1) was regenerated end-to-end with the `msprime` simulator on node `spark-a459` (2026-07-14); the Wikidata/SWH graph logs (§D–§E, Tables 5.1, 5.2, B.2) are unchanged.
 
 The complete inventory of manuscript artifacts this guide reproduces:
 
 | Artifact | Content | Datasets |
 |---|---|---|
-| Table 1 (`tab:geno_through`) | Structural figures, genotypes | 6 real + 5 synthetic genotype matrices |
-| Table 2 (`tab:geno_time`) | Avg time/vector, genotypes | same 11 genotype matrices |
-| Table 3 (`tab:geno`) | Space & energy vs. cuSPARSE | same 11 + `crossover_synth` |
-| Table 4 (`tab:geno_spmm`) | Batched right product (SpMM) | 6 real + 5 synthetic genotype matrices |
-| Table 5 (`tab:graph_struct`) | Structural figures, Wikidata | 5 Wikidata relation matrices |
-| Table 6 (`tab:graph`) | Boolean & Tropical graph product | 5 Wikidata relation matrices |
-| Table 7 (`tab:graph_scale`) | Scale/space at 10M–1.2G edges | 2 largest Wikidata relations + SWH software graph |
-| Table B (`tab:build`) | Host-side construction cost + amortization | 11 genotype matrices |
-| Figure 3 (`fig:space`) | Memory footprint (incl. `crossover_synth` at billion-nnz scale) | genotype matrices + crossover |
-| Figure 4 (`fig:batched`) | Batched throughput vs. $B$ | `geno22full` |
+| Table 4.1 (`tab:geno_through`) | Structural figures, genotypes | 6 real + 5 synthetic genotype matrices |
+| Table 4.2 (`tab:geno_time`) | Avg time/vector, genotypes | same 11 genotype matrices |
+| Table 4.3 (`tab:geno`) | Space & energy vs. cuSPARSE | same 11 + `crossover_synth` |
+| Table 5.1 (`tab:graph_scale`) | Scale/space at 10M–1.2G edges | 2 largest Wikidata relations + SWH software graph |
+| Table 5.2 (`tab:graph`) | Boolean & Tropical graph product | 5 Wikidata relation matrices |
+| Table A.1 (`tab:geno_spmm`) | Batched right product (SpMM) | 6 real + 5 synthetic genotype matrices |
+| Table B.1 (`tab:build`) | Host-side construction cost + amortization | 11 genotype matrices |
+| Table B.2 (`tab:graph_struct`) | Structural figures, Wikidata | 5 Wikidata relation matrices |
+| Figure 4.3 (`fig:space`) | Memory footprint (incl. `crossover_synth` at billion-nnz scale) | genotype matrices + crossover |
+| Figure A.1 (`fig:batched`) | Batched throughput vs. $B$ | `geno22full` |
 
 (The remaining figures — `fig:matrix`, `fig:mmr_rs`, `fig:dag`, `fig:completion`, `fig:sweep`, `fig:trace` — are schematic TikZ/`includegraphics` illustrations of the running example, not measured results, and require no experiment to regenerate.)
 
@@ -139,7 +139,7 @@ python3 generate_msprime.py 5000  100000 zenodo/genotypes/geno_synth_ld_low    1
 python3 generate_msprime.py 10000 50000  zenodo/genotypes/geno_synth_ind_large 1e-8 42   # synth_ind_large
 ```
 
-### C. Large-scale / crossover matrix (Table 3, Figure 3)
+### C. Large-scale / crossover matrix (Table 4.3, Figure 4.3)
 The large crossover matrix (`crossover_synth`, $10{,}000 \times 700{,}000$, $\approx 1.00$ B nnz) is our billion-nonzero scale probe. Its CSR needs $\approx 8.0$ GB, which fits on the GB10's 119 GiB unified pool, so **cuSPARSE runs** (48.38 ms/vec, 1976 mJ/vec); the grammar engine stays resident at $1.01$ GB analytic / $0.98$ GB peak ($\approx 8.0\times$ smaller, $2.41\times$ faster, $3.15\times$ lower energy). Generated with the same `msprime` simulator as §B (this is a large run — the dense matrix is ~28 GB; produce it on the GB10 node's 119 GiB unified memory):
 ```bash
 python3 generate_msprime.py 10000 700000 zenodo/genotypes/crossover_synth 1e-8 42
@@ -284,13 +284,13 @@ XVEC=x.bin CROSSCHECK=out ./gpu-engine/gpu_test <base> <rows> <cols> 1 repair
 
 ## 3. Reproducing Tables and Figures
 
-### Table 1 (Genotype structural figures) & Table 5 (Wikidata structural figures)
+### Table 4.1 (Genotype structural figures) & Table B.2 (Wikidata structural figures)
 The structural metrics (base rule count $|\mathcal{R}|$, depth $L$, maximum streaming width $w^{*}$, and pass-through nodes $+\text{pt}$) are computed by the host scheduler during graph loading and are architecture-independent. Run the test driver on each base path and read the layout from stdout:
 ```bash
-# Table 1 — each genotype base (example shown for geno21):
+# Table 4.1 — each genotype base (example shown for geno21):
 ./gpu-engine/gpu_test zenodo/genotypes/geno21 2504 100000 1
 
-# Table 5 — each Wikidata relation:
+# Table B.2 — each Wikidata relation:
 ./gpu-engine/gpu_test zenodo/wikidata/wd_sports_team 332121 29854 1    # repeat for the 5 wd_* relations (dims above)
 ```
 The driver prints one structural line, e.g.:
@@ -301,7 +301,7 @@ mapping to the table columns:
 - `Max depth (L)`      -> $L$
 - `+pt`                -> $+\text{pt}$ (and `Total layered rules` = $|\mathcal{R}| + \text{pt}$)
 
-### Table 2: Genotype Average Time (ms/vector)
+### Table 4.2: Genotype Average Time (ms/vector)
 Run the complete bioinformatics benchmarking suite (all 11 real + synthetic genotype datasets):
 ```bash
 bash run_all_bio_baselines.sh
@@ -315,14 +315,14 @@ This benchmarks each dataset across:
 
 and the cuSPARSE CSR SpMV column. Results are saved to `manuscript/logs/bio_results.csv`.
 
-### Table 3: Genotype Space & Energy vs. cuSPARSE (incl. crossover)
+### Table 4.3: Genotype Space & Energy vs. cuSPARSE (incl. crossover)
 Execute the space/energy benchmark over the genotype matrices plus `crossover_synth`:
 ```bash
 ./reproduce.sh space
 ```
 This runs `gpu_test` and `cusparse_test` per dataset (analytic device bytes, measured peak bytes, time, and GPU energy mJ/vector, grammar engine vs. cuSPARSE CSR) and writes the canonical log `manuscript/logs/geno_space_energy.log` — the file `extract_results.py` reads for this table. (The standalone `run_space_energy.py` driver is an alternate front-end that writes `manuscript/logs/space_energy_raw.txt`; it is *not* the canonical log and is not consumed by the extractor.) `crossover_synth` is the billion-nnz scale probe: cuSPARSE's CSR ($\approx 8.03$ GB) now fits and runs, while the engine reports its $1.01$ GB analytic / $0.98$ GB peak footprint ($\approx 8.0\times$ smaller).
 
-### Table 4: Batched Right Product (SpMM, $Y=MX$)
+### Table A.1: Batched Right Product (SpMM, $Y=MX$)
 Run the GPU engine in batched mode (7th arg $B$) and cuSPARSE SpMM, sweeping batch sizes ($B = 16, 32, 64, 128, 256$, as in `reproduce.sh spmm`) and recording the best per-vector time:
 ```bash
 # Grammar engine, batched (example: geno22full, B=32):
@@ -333,7 +333,7 @@ Run the GPU engine in batched mode (7th arg $B$) and cuSPARSE SpMM, sweeping bat
 ```
 Repeat for all 6 real + 5 synthetic genotype matrices (dimensions per §A/§B).
 
-### Table 6: Graph Right Product (Boolean & Tropical Semirings)
+### Table 5.2: Graph Right Product (Boolean & Tropical Semirings)
 Set the `SEMIRING` environment variable and run `gpu_test` (single-vector and batched $B{=}16$) on **each** of the five Wikidata relation base paths:
 ```bash
 # --- Wikidata ---
@@ -347,7 +347,7 @@ done
 ```
 The CPU reference (sequential and OpenMP) and the cuSPARSE Boolean CSR baseline reported in the table are produced by the same driver; results are verified bit-for-bit against the CPU reference (all five relations pass).
 
-### Table 6 baselines: GraphBLAS (CPU) and cuGraph (GPU)
+### Table 5.2 baselines: GraphBLAS (CPU) and cuGraph (GPU)
 Because no vendor *dense* kernel exists for the Boolean/Tropical semirings, the graph baselines are the semiring-native **SuiteSparse:GraphBLAS** (CPU) and **cuGraph** (GPU BFS/SSSP). Both consume the same `<name>.sparse` edge lists (`row col`) produced by the `sparse` mode in §2.D.
 
 ```bash
@@ -373,7 +373,7 @@ export LD_LIBRARY_PATH="$(find cgvenv/lib/python3.12/site-packages -type d \( -n
 ```
 Note: GraphBLAS `mxv` is one semiring mat-vec (directly comparable to the engine's single-vector sweep), whereas cuGraph BFS/SSSP run the *full* traversal to convergence (an end-to-end reference, not per mat-vec). On the node, RAPIDS is the CUDA-12 build running on CUDA 13 / `sm_121` via PTX-JIT.
 
-### Table 7: Scale at 10M–1.2G edges (`tab:graph_scale`)
+### Table 5.1: Scale at 10M–1.2G edges (`tab:graph_scale`)
 The two largest Wikidata relations (`wd_country`, `wd_cites_work`; built in §2.D) **plus the billion-edge Software Heritage software graph** `swh_full` (§2.E). Per relation: the Boolean single-vector engine and cuSPARSE times, the engine/CSR analytic device footprints, and the serialized REANS grammar size. The `matrepair -r -y` call is *lazy* — `-y` skips recompression and just prints the size report (`>> REANS size: N bytes`) from the existing grammar, so it is fast:
 ```bash
 # All three live in the Zenodo package layout (zenodo/wikidata, zenodo/swh):
@@ -405,31 +405,31 @@ run experiment  ->  manuscript/logs/<experiment>.log   (raw, provenance-headed, 
 ```
 Or run a single stage: `./reproduce.sh {struct|time|space|spmm|graph}` re-runs one experiment family; `./reproduce.sh extract` re-derives all tables/figure-data from the **existing** logs without recomputing; `./reproduce.sh plot` recompiles the TikZ figures.
 
-Three heavy families are **not** part of `all` and are run on demand: `./reproduce.sh grammar` (→ `grammar_build.log`, Table B grammar column), `./reproduce.sh graphscale` (→ `graph_scale.log`, Table 7), and `./reproduce.sh crosscheck` (→ `crosscheck.log`, cross-implementation correctness). The GraphBLAS and cuGraph baseline logs are produced separately by `gb_run.sh` / `cg_run.sh` (§ *Table 6 baselines*).
+Three heavy families are **not** part of `all` and are run on demand: `./reproduce.sh grammar` (→ `grammar_build.log`, Table B.1 grammar column), `./reproduce.sh graphscale` (→ `graph_scale.log`, Table 5.1), and `./reproduce.sh crosscheck` (→ `crosscheck.log`, cross-implementation correctness). The GraphBLAS and cuGraph baseline logs are produced separately by `gb_run.sh` / `cg_run.sh` (§ *Table 5.2 baselines*).
 
 ### Canonical logs (kept under `manuscript/logs/`, gitignored)
 Every log begins with a provenance header (date, host, git commit) and separates datasets with `## <key>` markers so a single parser can slice it. Log → artifact map:
 
 | Canonical log | Feeds | Produced by |
 |---|---|---|
-| `manuscript/logs/geno_struct.log` | Table 1 (`tab:geno_through`) | `reproduce.sh struct` |
-| `manuscript/logs/bio_results.csv` + `manuscript/logs/geno_space_energy.log` | Table 2 (`tab:geno_time`) | `reproduce.sh time`/`space` |
-| `manuscript/logs/geno_space_energy.log` | Table 3 (`tab:geno`), Table B (`tab:build`, $+$pt col), Fig. 3 (`fig:space`) | `reproduce.sh space` |
-| `manuscript/logs/grammar_build.log` | Table B (`tab:build`, grammar col) | `reproduce.sh grammar` |
-| `manuscript/logs/geno_spmm.log` + `manuscript/logs/geno_cusparse_alg.log` | Table 4 (`tab:geno_spmm`), Fig. 4 (`fig:batched`) | `reproduce.sh spmm` |
-| `manuscript/logs/graph_struct.log` | Table 5 (`tab:graph_struct`) | `reproduce.sh struct` |
-| `manuscript/logs/graph_semiring.log` | Table 6 (`tab:graph`) | `reproduce.sh graph` |
-| `manuscript/logs/graph_scale.log` | Table 7 (`tab:graph_scale`) | `reproduce.sh graphscale` |
+| `manuscript/logs/geno_struct.log` | Table 4.1 (`tab:geno_through`) | `reproduce.sh struct` |
+| `manuscript/logs/bio_results.csv` + `manuscript/logs/geno_space_energy.log` | Table 4.2 (`tab:geno_time`) | `reproduce.sh time`/`space` |
+| `manuscript/logs/geno_space_energy.log` | Table 4.3 (`tab:geno`), Table B.1 (`tab:build`, $+$pt col), Fig. 4.3 (`fig:space`) | `reproduce.sh space` |
+| `manuscript/logs/grammar_build.log` | Table B.1 (`tab:build`, grammar col) | `reproduce.sh grammar` |
+| `manuscript/logs/geno_spmm.log` + `manuscript/logs/geno_cusparse_alg.log` | Table A.1 (`tab:geno_spmm`), Fig. A.1 (`fig:batched`) | `reproduce.sh spmm` |
+| `manuscript/logs/graph_struct.log` | Table B.2 (`tab:graph_struct`) | `reproduce.sh struct` |
+| `manuscript/logs/graph_semiring.log` | Table 5.2 (`tab:graph`) | `reproduce.sh graph` |
+| `manuscript/logs/graph_scale.log` | Table 5.1 (`tab:graph_scale`) | `reproduce.sh graphscale` |
 
 The following logs are **not** parsed by `extract_results.py` (they back correctness claims and baselines, not table cells), but are kept alongside the canonical logs for completeness:
 
 | Log | Role | Produced by |
 |---|---|---|
 | `manuscript/logs/crosscheck.log` | Cross-implementation correctness (§2.F); certifies the full SWH graph bit-for-bit | `reproduce.sh crosscheck` |
-| `manuscript/logs/graphblas_bench.log` | Standalone SuiteSparse:GraphBLAS baseline (Table 6's GB numbers are extracted from `graph_semiring.log`, which embeds the same run) | `gb_run.sh` |
+| `manuscript/logs/graphblas_bench.log` | Standalone SuiteSparse:GraphBLAS baseline (Table 5.2's GB numbers are extracted from `graph_semiring.log`, which embeds the same run) | `gb_run.sh` |
 | `manuscript/logs/cugraph_bench.log` | cuGraph BFS/SSSP end-to-end reference, discussed in the manuscript (§ Limitations) | `cg_run.sh` |
 
-### Host-side construction cost (Table B / `tab:build`)
+### Host-side construction cost (Table B.1 / `tab:build`)
 `tab:build` reports **two distinct, additive** host construction costs per genotype matrix:
 
 1. **grammar RePair (s)** — the one-time offline `mm-repair` compressor build, *shared with the CPU baseline*. `matrepair -r` prints a "Compression Report" (`>> total time: X`); `reproduce.sh grammar` runs it per dataset into `manuscript/logs/grammar_build.log`. This recompresses the grammars, so it is **expensive and kept out of `./reproduce.sh all`** — run it once to populate the column.
@@ -450,7 +450,7 @@ python3 extract_results.py          # manuscript/logs/ -> manuscript/tables/*.te
 Missing logs are skipped with a warning (never a hard error), so the pipeline can be run incrementally as experiments land. A regenerated table normalizes number formatting but carries the same measured values; the existing `manuscript/tables/tab_*.tex` and `figures/data/*.dat` are the last-known-good fallbacks until a fresh node run overwrites them.
 
 ### Figures (TikZ / pgfplots, not matplotlib)
-- **Figure 3** (`fig:space`) and **Figure 4** (`fig:batched`) are standalone pgfplots sources — `manuscript/figures/fig_space.tex` and `fig_batched.tex` — that read `manuscript/figures/data/fig_space.dat` / `fig_batched.dat`. They compile to `manuscript/figures/fig_space.pdf` / `fig_batched.pdf`, which `main.tex` includes via `\includegraphics` (same convention as the schematic figures).
+- **Figure 4.3** (`fig:space`) and **Figure A.1** (`fig:batched`) are standalone pgfplots sources — `manuscript/figures/fig_space.tex` and `fig_batched.tex` — that read `manuscript/figures/data/fig_space.dat` / `fig_batched.dat`. They compile to `manuscript/figures/fig_space.pdf` / `fig_batched.pdf`, which `main.tex` includes via `\includegraphics` (same convention as the schematic figures).
 ```bash
 ./reproduce.sh plot                 # or: cd manuscript/figures && pdflatex fig_space.tex
 ```

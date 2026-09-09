@@ -195,16 +195,16 @@ Each stage produces a specific paper artifact:
 
 | `reproduce.sh <stage>` | In `all` | Paper output |
 |---|:---:|---|
-| `struct`     | ✔ | Structural sizes (nonterminals, depth $L$, width $w^*$) for genotypes and Wikidata (`tab:geno_through`, `tab:graph_struct`) |
-| `time`       | ✔ | Genotype average time/vector: engine vs CPU sweeps, `mm-repair`, cuSPARSE (`tab:geno_time`) |
-| `space`      | ✔ | Genotype space & energy vs cuSPARSE, incl. `crossover_synth` (`tab:geno`, `fig:space`) |
-| `spmm`       | ✔ | Batched right product $Y=MX$: engine vs cuSPARSE (`tab:geno_spmm`, `fig:batched`) |
-| `graph`      | ✔ | Wikidata Boolean & Tropical product vs GraphBLAS (`tab:graph`) |
-| `extract`    | ✔ | Re-derive all `tab_*.tex` + figure `.dat` from existing logs (no recompute) |
-| `plot`       | ✔ | Compile `fig_space.pdf`, `fig_batched.pdf` |
-| `graphscale` | — | Large-scale graphs, 10M–1.2G edges, incl. SWH (`tab:graph_scale`) — heavy, on demand |
-| `grammar`    | — | Offline RePair grammar-build cost (`tab:build`) — heavy, on demand |
-| `crosscheck` | — | Cross-implementation correctness (engine vs CPU / cuSPARSE / GraphBLAS / `mm-repair`); backs the bit-for-bit claims — heavy, on demand |
+| `struct`     | ✔ | Structural sizes (nonterminals $\lvert\mathcal{R}\rvert$, depth $L$, width $w^*$) — **Table 4.1** (genotypes) & **Table B.2** (Wikidata) |
+| `time`       | ✔ | Genotype average time/vector: engine vs CPU sweeps, `mm-repair`, cuSPARSE — **Table 4.2** |
+| `space`      | ✔ | Genotype space & energy vs cuSPARSE, incl. `crossover_synth` — **Table 4.3** & **Figure 4.3** |
+| `spmm`       | ✔ | Batched right product $Y=MX$: engine vs cuSPARSE — **Table A.1** & **Figure A.1** |
+| `graph`      | ✔ | Wikidata Boolean & Tropical product vs GraphBLAS — **Table 5.2** |
+| `extract`    | ✔ | Re-derive every table + figure datum from the existing logs (no recompute) |
+| `plot`       | ✔ | Compile the two measured figures (4.3, A.1) |
+| `graphscale` | — | Large-scale graphs, 10M–1.2G edges, incl. SWH — **Table 5.1** (heavy, on demand) |
+| `grammar`    | — | Offline RePair grammar-build cost — **Table B.1** (heavy, on demand) |
+| `crosscheck` | — | Cross-implementation correctness (engine vs CPU / cuSPARSE / GraphBLAS / `mm-repair`); backs the bit-for-bit claims (heavy, on demand) |
 
 For per-table manual commands, baseline setup (SuiteSparse:GraphBLAS, cuGraph), and full
 dataset provenance, see **[REPRODUCIBILITY.md](REPRODUCIBILITY.md)** — an optional deep-dive;
@@ -223,6 +223,7 @@ If you use this software or its datasets, please cite the paper:
   booktitle = {Proceedings of the SIAM Symposium on Algorithm Engineering and Experiments (ALENEX)},
   year      = {2027},
   publisher = {SIAM},
+  note      = {To appear},
 }
 ```
 
