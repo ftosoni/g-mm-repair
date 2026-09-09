@@ -48,7 +48,7 @@ mkdir -p "$LOGS" manuscript/tables manuscript/figures/data
 GPU=./gpu-engine/gpu_test
 CUS=./gpu-engine/cusparse_test
 
-# Datasets live in the Zenodo data package (doi:10.5281/zenodo.XXXXXXX), extracted
+# Datasets live in the Zenodo data package (doi:10.5281/zenodo.22677746), extracted
 # into a subfolder of this repo -- by default ./zenodo/{genotypes,wikidata,swh}/ (the
 # record's own layout). Override with e.g. ZENODO_DIR=/path/to/package if you keep it
 # elsewhere. Each stem <ZENODO_DIR>/<cat>/<base> resolves both the grammar the engine

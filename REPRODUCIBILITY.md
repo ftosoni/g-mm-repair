@@ -58,14 +58,27 @@ All datasets live in a single subfolder of this repo, `zenodo/`, laid out as
 reads (override the location with `ZENODO_DIR=/path/to/package`). There are two ways to
 populate it:
 
-- **Recommended — download the Zenodo data package** (doi:10.5281/zenodo.XXXXXXX) and extract
-  it into `zenodo/`. It already contains every grammar (`.vc.C`, `.vc.R`, `.val`, …) and the
+- **Recommended — download the Zenodo data package** ([doi:10.5281/zenodo.22677746](https://doi.org/10.5281/zenodo.22677746),
+  the concept DOI that always resolves to the latest version; the camera-ready used version
+  [10.5281/zenodo.22677747](https://doi.org/10.5281/zenodo.22677747)). To stay under Zenodo's
+  100-files-per-record limit the three data folders ship as **three uncompressed tar archives**
+  (`genotypes.tar`, `wikidata.tar`, `swh.tar`; the payload is already compressed, so they are
+  *not* gzipped). Extract all three in place to recreate the `zenodo/{genotypes,wikidata,swh}/`
+  layout, then verify integrity against the shipped checksums:
+  ```bash
+  for t in genotypes.tar wikidata.tar swh.tar; do tar xf "$t"; done   # -> zenodo/{genotypes,wikidata,swh}/
+  md5sum -c MANIFEST.md5                                              # expect: all files OK
+  ```
+  The package already contains every grammar (`.vc.C`, `.vc.R`, `.val`, …) and the
   Wikidata `.sparse` edge lists, so `./reproduce.sh crosscheck` / `struct` / `space` / `spmm` /
   `graph` run directly. The dense matrices ship zstd-compressed; decompress them only if you
   intend to *rebuild* a grammar (`./reproduce.sh grammar`) or run the from-scratch steps below:
   ```bash
   for f in zenodo/genotypes/*.zst zenodo/swh/*.zst; do zstd -d -k "$f"; done   # -> raw <base> alongside the grammar
   ```
+  The three large `<base>.vc.zst` pre-RePair streams (`wd_country`, `wd_cites_work`, `swh_full`)
+  need no manual handling: `./reproduce.sh graphscale` decompresses and back-dates them
+  automatically as the lazy-rebuild gate for `matrepair -y` (§4, `tab:graph_scale`).
 - **From scratch** — rebuild the same files into the same layout with the commands in §A–§E
   below. All matrices use the same dense-int32 format consumed by `mm-repair`.
 

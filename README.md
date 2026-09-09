@@ -7,6 +7,7 @@
   <a href="https://developer.nvidia.com/cuda-zone"><img src="https://img.shields.io/badge/CUDA-12.0+-76B900?logo=nvidia&logoColor=white&style=flat-square" alt="CUDA 12.0+"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.8+-3776ab?logo=python&logoColor=white&style=flat-square" alt="Python 3.8+"></a>
   <a href="https://www.openmp.org/"><img src="https://img.shields.io/badge/OpenMP-Parallel-blue?style=flat-square" alt="OpenMP"></a>
+  <a href="https://doi.org/10.5281/zenodo.22677746"><img src="https://img.shields.io/badge/data-10.5281%2Fzenodo.22677746-1682D4?style=flat-square" alt="Zenodo data package DOI"></a>
 </p>
 
 A high-performance level-synchronous GPU executor (written in CUDA C++) for computing right matrix-vector multiplication $y = Mx$ over grammar-compressed matrices. It implements a double-buffered level sweep algorithm with an **"emit-on-the-spot"** memory optimization that avoids carrying intermediate rule expansions to the top level, drastically reducing GPU memory usage and overhead.
@@ -156,6 +157,44 @@ You can run the entire replication pipeline on a CUDA-supported system with:
 ```bash
 ./reproduce.sh all
 ```
+
+---
+
+## 📦 Data Availability
+
+Every dataset used in the paper — the 1000 Genomes genotype matrices, the five synthetic
+haplotype matrices, `crossover_synth`, the seven Wikidata relations, and the billion-edge
+Software Heritage graph — is archived on Zenodo, together with the RePair grammars the
+engine consumes (`.vc.C`, `.vc.R`, `.val`, `.vc.C.ansf.1`, `.vc.C.iv`, `.vc.R.iv`):
+
+<p align="left">
+  <a href="https://doi.org/10.5281/zenodo.22677746"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.22677746.svg" alt="Zenodo DOI"></a>
+</p>
+
+> **Data package DOI:** [`10.5281/zenodo.22677746`](https://doi.org/10.5281/zenodo.22677746)
+> (concept DOI — always resolves to the latest version; the version used for the camera-ready
+> is [`10.5281/zenodo.22677747`](https://doi.org/10.5281/zenodo.22677747)).
+
+The record ships **three uncompressed tar archives** (`genotypes.tar`, `wikidata.tar`,
+`swh.tar`) plus `README.txt` and `MANIFEST.md5`. The payload inside is already
+zstd-/RePair-compressed, so the tars are *not* gzipped. After downloading the record,
+extract all three **in place** to recreate the `zenodo/{genotypes,wikidata,swh}/` layout
+that `reproduce.sh` expects, then verify integrity:
+
+```bash
+# from the extracted record directory (or the repo root, so the folders land in ./zenodo/):
+for t in genotypes.tar wikidata.tar swh.tar; do tar xf "$t"; done   # -> genotypes/ wikidata/ swh/
+md5sum -c MANIFEST.md5                                              # expect: all files OK
+```
+
+Point `reproduce.sh` at the result with `ZENODO_DIR=/path/to/package` (it defaults to
+`./zenodo/`). No manual decompression is needed for the benchmark stages: the dense
+`.zst` matrices are only unpacked if you *rebuild* a grammar (`./reproduce.sh grammar`),
+and the three large `<base>.vc.zst` pre-RePair streams shipped for the `tab:graph_scale`
+relations (`wd_country`, `wd_cites_work`, `swh_full`) are decompressed and back-dated
+**automatically** by `./reproduce.sh graphscale` — you never unpack them by hand. See
+**[REPRODUCIBILITY.md](REPRODUCIBILITY.md)** §2 for the full dataset guide (including how to
+rebuild every file from scratch).
 
 ---
 
