@@ -180,14 +180,29 @@ run_graph() {
 # matrepair -r -y (lazy): -y skips the compression phases and just prints the size report
 # ("REANS size: N bytes") from the existing grammar -- fast, no rebuild. Kept out of `all`
 # because wd_cites_work (166M edges) is a heavy scale run.
+#
+# GATE-FILE GUARD: matrepair -y still hard-depends on the bare <base> and <base>.vc as an
+# mtime/existence gate (need_rebuild), but the Zenodo package deliberately omits the large,
+# regenerable pre-RePair .vc stream (0.7 GB for wd_cites_work, 5 GB for swh_full) -- shipping it
+# would only feed matrepair's internal nonzero/CRSV/bpe lines, none of which tab:graph_scale
+# reads (it takes only the REANS *byte count* = .val + .vc.C.ansf.1 + .vc.R.iv, all shipped). So
+# when .vc is absent we synthesize the two gate files: an empty bare <base> plus a *sparse* .vc
+# sized 4*(nnz+rows) (from the NNZ cuSPARSE just reported), which also makes the report's
+# nonzero/CRSV/bpe come out correct. Both are dated in the past so the shipped grammar is always
+# newer -> -y stays fully lazy. Same spirit as run_benchmark_16.py's decompress-if-missing guard.
 run_graphscale() {
   local log=$LOGS/graph_scale.log; prov "$log"
   for e in "${GRAPH_SCALE[@]}"; do IFS='|' read -r key path r c <<<"$e"
     echo "## $key" | tee -a "$log"
     SEMIRING=boolean $GPU "$path" "$r" "$c" 50 repair 2>&1 | tee -a "$log"
     echo "--- CUSPARSE ---" | tee -a "$log"
-    $CUS "$path" "$r" "$c" 50 2>&1 | tee -a "$log"
+    local cout; cout=$($CUS "$path" "$r" "$c" 50 2>&1); printf '%s\n' "$cout" | tee -a "$log"
     echo "--- GRAMMAR ---" | tee -a "$log"
+    if [ ! -f "${path}.vc" ]; then    # synthesize the lazy-rebuild gate (see GATE-FILE GUARD above)
+      local nnz; nnz=$(printf '%s\n' "$cout" | sed -n 's/.*NNZ:[[:space:]]*\([0-9]\{1,\}\).*/\1/p' | head -1)
+      : > "${path}"; truncate -s "$(( 4 * (${nnz:-0} + r) ))" "${path}.vc"
+      touch -d 2000-01-01 "${path}"; touch -d 2000-01-02 "${path}.vc"
+    fi
     ./mm-repair/matrepair -r -y --bool "$path" "$r" "$c" 2>&1 | tee -a "$log"
   done
 }
