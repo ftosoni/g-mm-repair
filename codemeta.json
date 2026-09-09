@@ -1,0 +1,69 @@
+{
+  "@context": "https://w3id.org/codemeta/3.0",
+  "@type": "SoftwareSourceCode",
+  "identifier": "g-mm-repair",
+  "name": "g-mm-repair: A Memory-Bounded GPU Engine for Right Multiplication over Grammar-Compressed Matrices",
+  "description": "A high-performance level-synchronous GPU engine (CUDA C++) for computing the right matrix-vector product y = Mx over RePair grammar-compressed matrices. It uses a double-buffered level sweep with an emit-on-the-spot memory optimization and supports the PlusTimes, Boolean, and Tropical semirings, applied to genotype matrices and knowledge-graph relations.",
+  "codeRepository": "https://github.com/ftosoni/g-mm-repair",
+  "issueTracker": "https://github.com/ftosoni/g-mm-repair/issues",
+  "license": "https://spdx.org/licenses/Apache-2.0",
+  "programmingLanguage": [
+    "CUDA C++",
+    "C++",
+    "C",
+    "Python"
+  ],
+  "runtimePlatform": "CUDA 12.0+",
+  "operatingSystem": "Linux",
+  "developmentStatus": "active",
+  "keywords": [
+    "grammar compression",
+    "RePair",
+    "straight-line program",
+    "SpMV",
+    "GPU",
+    "CUDA",
+    "compressed linear algebra",
+    "genotype matrix",
+    "polygenic score",
+    "1000 Genomes",
+    "knowledge graph",
+    "Wikidata",
+    "Software Heritage",
+    "ALENEX"
+  ],
+  "author": [
+    {
+      "@type": "Person",
+      "givenName": "Francesco",
+      "familyName": "Tosoni",
+      "@id": "https://orcid.org/0000-0001-8457-3866",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "Sant'Anna School of Advanced Studies, L'EMbeDS, Pisa, Italy"
+      }
+    },
+    {
+      "@type": "Person",
+      "givenName": "Gabriele",
+      "familyName": "Mencagli",
+      "@id": "https://orcid.org/0000-0002-6263-7723",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "Department of Computer Science, University of Pisa, Italy"
+      }
+    }
+  ],
+  "referencePublication": {
+    "@type": "ScholarlyArticle",
+    "name": "Streaming Right Multiplication over Grammar-Compressed Matrices: A Memory-Bounded GPU Engine for Genotype and Graph Data",
+    "isPartOf": "Proceedings of the SIAM Symposium on Algorithm Engineering and Experiments (ALENEX 2027)",
+    "publisher": {
+      "@type": "Organization",
+      "name": "Society for Industrial and Applied Mathematics (SIAM)"
+    }
+  },
+  "relatedLink": [
+    "https://doi.org/10.5281/zenodo.22677746"
+  ]
+}

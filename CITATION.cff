@@ -1,0 +1,48 @@
+cff-version: 1.2.0
+message: "If you use this software or its datasets, please cite the paper in `preferred-citation`."
+title: "g-mm-repair: A Memory-Bounded GPU Engine for Right Multiplication over Grammar-Compressed Matrices"
+abstract: >-
+  A high-performance level-synchronous GPU engine (CUDA C++) for computing the right
+  matrix-vector product y = Mx over RePair grammar-compressed matrices, with an
+  emit-on-the-spot memory optimization and Boolean/Tropical semiring support, applied to
+  genotype matrices and knowledge-graph relations.
+type: software
+authors:
+  - family-names: Tosoni
+    given-names: Francesco
+    orcid: "https://orcid.org/0000-0001-8457-3866"
+    affiliation: "Sant'Anna School of Advanced Studies, L'EMbeDS, Pisa, Italy"
+  - family-names: Mencagli
+    given-names: Gabriele
+    orcid: "https://orcid.org/0000-0002-6263-7723"
+    affiliation: "Department of Computer Science, University of Pisa, Italy"
+license: Apache-2.0
+repository-code: "https://github.com/ftosoni/g-mm-repair"
+keywords:
+  - grammar compression
+  - RePair
+  - straight-line program
+  - SpMV
+  - GPU
+  - CUDA
+  - compressed linear algebra
+  - genotype matrix
+  - knowledge graph
+preferred-citation:
+  type: conference-paper
+  title: "Streaming Right Multiplication over Grammar-Compressed Matrices: A Memory-Bounded GPU Engine for Genotype and Graph Data"
+  authors:
+    - family-names: Tosoni
+      given-names: Francesco
+      orcid: "https://orcid.org/0000-0001-8457-3866"
+      affiliation: "Sant'Anna School of Advanced Studies, L'EMbeDS, Pisa, Italy"
+    - family-names: Mencagli
+      given-names: Gabriele
+      orcid: "https://orcid.org/0000-0002-6263-7723"
+      affiliation: "Department of Computer Science, University of Pisa, Italy"
+  collection-title: "Proceedings of the SIAM Symposium on Algorithm Engineering and Experiments (ALENEX)"
+  conference:
+    name: "SIAM Symposium on Algorithm Engineering and Experiments (ALENEX 2027)"
+  publisher:
+    name: "Society for Industrial and Applied Mathematics (SIAM)"
+  year: 2027

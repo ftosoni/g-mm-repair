@@ -1,6 +1,14 @@
 # Reproducibility Guide for "Streaming Right Multiplication over Grammar-Compressed Matrices"
 
-This document provides step-by-step instructions to reproduce **all and only** the tables and figures presented in the manuscript. The manuscript reports two experiment families: **genotype matrices** (1000 Genomes + synthetic haplotypes, `PlusTimes` semiring) and **knowledge-graph relation matrices** (Wikidata relations, `Boolean`/`Tropical` semirings).
+> **This is an optional deep-dive.** To reproduce the paper you only need the
+> [README](README.md): download the Zenodo package and run `./reproduce.sh` — that script,
+> together with its canonical logs under `manuscript/logs/`, is the single source of truth.
+> This guide is the *reference* behind it: the exact per-table commands `reproduce.sh`
+> automates (§3), the log→artifact mapping (§4), the cross-implementation correctness protocol
+> (§2.F), and — for the curious — how every dataset in the package was derived from scratch
+> (§2.A–§2.E). None of §2.A–§2.E is required when you use the published Zenodo package.
+
+This document gives step-by-step instructions to reproduce **all and only** the tables and figures presented in the manuscript. The manuscript reports two experiment families: **genotype matrices** (1000 Genomes + synthetic haplotypes, `PlusTimes` semiring) and **knowledge-graph relation matrices** (Wikidata relations, `Boolean`/`Tropical` semirings).
 
 These experiments were originally profiled and measured on a remote prototyping node (**NVIDIA Grace-Blackwell GB10 node**, featuring unified coherent CPU-GPU memory of 119 GiB, CUDA 13.0, g++ 13.3, and Ubuntu 24.04 LTS). Per the manuscript (§ Limitations), time/energy figures are board-dependent; the structural figures ($|\mathcal{R}|$, $L$, $w^{*}$, $+\text{pt}$) are architecture-independent and reproducible on any host.
 
@@ -85,6 +93,10 @@ populate it:
 If the datasets are already compiled and stored on the test server, you can skip this step.
 
 **Python prerequisites:** `pip install numpy msprime==1.4.2` (msprime drives the synthetic genotype simulation in §B/§C; the VCF path in §A needs only `numpy` — `vcf2mat.py` reads the `.vcf.gz` with Python's standard-library `gzip`, no `pysam`/`cyvcf2`). The synthetic matrices are bit-for-bit reproducible only under the msprime version they were generated with — **`msprime==1.4.2`** (tskit 1.0.3, numpy 2.5.1); a different msprime release may change the coalescent RNG stream for the same seed.
+
+> **§A–§E below are optional.** They document how each dataset in the package was derived
+> from its public source, for transparency and independent regeneration. If you downloaded the
+> Zenodo package you already have every file these steps produce — skip straight to §3/§4.
 
 ### A. Real Genotypes (1000 Genomes) — Chr20, Chr21, Chr22
 The manuscript uses three human chromosomes, each at a $10^5$-variant subset and at full width. Download the phase-3 VCFs and slice them with `vcf2mat.py` into `zenodo/genotypes/`:

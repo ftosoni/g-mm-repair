@@ -149,52 +149,85 @@ Notes:
 
 ---
 
-## 📊 Reproducibility
-
-To replicate all experimental evaluations, benchmark baselines (including SuiteSparse:GraphBLAS and cuGraph), and automatically compile the LaTeX tables and TikZ figures from the paper, follow the documentation in **[REPRODUCIBILITY.md](REPRODUCIBILITY.md)**.
-
-You can run the entire replication pipeline on a CUDA-supported system with:
-```bash
-./reproduce.sh all
-```
-
----
-
 ## 📦 Data Availability
 
-Every dataset used in the paper — the 1000 Genomes genotype matrices, the five synthetic
-haplotype matrices, `crossover_synth`, the seven Wikidata relations, and the billion-edge
-Software Heritage graph — is archived on Zenodo, together with the RePair grammars the
-engine consumes (`.vc.C`, `.vc.R`, `.val`, `.vc.C.ansf.1`, `.vc.C.iv`, `.vc.R.iv`):
+All datasets (1000 Genomes genotypes, synthetic haplotypes, `crossover_synth`, the Wikidata
+relations, and the billion-edge Software Heritage graph) and the RePair grammars the engine
+consumes are archived on Zenodo:
 
 <p align="left">
   <a href="https://doi.org/10.5281/zenodo.22677746"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.22677746.svg" alt="Zenodo DOI"></a>
 </p>
 
-> **Data package DOI:** [`10.5281/zenodo.22677746`](https://doi.org/10.5281/zenodo.22677746)
-> (concept DOI — always resolves to the latest version; the version used for the camera-ready
-> is [`10.5281/zenodo.22677747`](https://doi.org/10.5281/zenodo.22677747)).
+> **DOI:** [`10.5281/zenodo.22677746`](https://doi.org/10.5281/zenodo.22677746) — concept DOI,
+> always resolves to the latest version (camera-ready version: [`10.5281/zenodo.22677747`](https://doi.org/10.5281/zenodo.22677747)).
 
-The record ships **three uncompressed tar archives** (`genotypes.tar`, `wikidata.tar`,
-`swh.tar`) plus `README.txt` and `MANIFEST.md5`. The payload inside is already
-zstd-/RePair-compressed, so the tars are *not* gzipped. After downloading the record,
-extract all three **in place** to recreate the `zenodo/{genotypes,wikidata,swh}/` layout
-that `reproduce.sh` expects, then verify integrity:
+Download the record, extract the three tar archives, and verify integrity:
 
 ```bash
-# from the extracted record directory (or the repo root, so the folders land in ./zenodo/):
+mkdir -p zenodo && cd zenodo
+REC=https://zenodo.org/api/records/22677747/files
+for f in genotypes.tar wikidata.tar swh.tar README.txt MANIFEST.md5; do
+  curl -L -o "$f" "$REC/$f/content"
+done
 for t in genotypes.tar wikidata.tar swh.tar; do tar xf "$t"; done   # -> genotypes/ wikidata/ swh/
 md5sum -c MANIFEST.md5                                              # expect: all files OK
+cd ..
 ```
 
-Point `reproduce.sh` at the result with `ZENODO_DIR=/path/to/package` (it defaults to
-`./zenodo/`). No manual decompression is needed for the benchmark stages: the dense
-`.zst` matrices are only unpacked if you *rebuild* a grammar (`./reproduce.sh grammar`),
-and the three large `<base>.vc.zst` pre-RePair streams shipped for the `tab:graph_scale`
-relations (`wd_country`, `wd_cites_work`, `swh_full`) are decompressed and back-dated
-**automatically** by `./reproduce.sh graphscale` — you never unpack them by hand. See
-**[REPRODUCIBILITY.md](REPRODUCIBILITY.md)** §2 for the full dataset guide (including how to
-rebuild every file from scratch).
+This lands everything in `./zenodo/`, exactly where `reproduce.sh` looks (override with
+`ZENODO_DIR=/path/to/package`). File formats and how to rebuild every dataset from scratch are
+documented in **[REPRODUCIBILITY.md](REPRODUCIBILITY.md)**.
+
+---
+
+## 📊 Reproducibility
+
+**`reproduce.sh` is the single source of truth.** It runs each experiment into
+`manuscript/logs/`, then regenerates every paper table and figure from those logs via
+`extract_results.py`. With the Zenodo package in `./zenodo/`, on a CUDA host:
+
+```bash
+./reproduce.sh all      # struct + time + space + spmm + graph, then extract + plot
+```
+
+Each stage produces a specific paper artifact:
+
+| `reproduce.sh <stage>` | In `all` | Paper output |
+|---|:---:|---|
+| `struct`     | ✔ | Structural sizes (nonterminals, depth $L$, width $w^*$) for genotypes and Wikidata (`tab:geno_through`, `tab:graph_struct`) |
+| `time`       | ✔ | Genotype average time/vector: engine vs CPU sweeps, `mm-repair`, cuSPARSE (`tab:geno_time`) |
+| `space`      | ✔ | Genotype space & energy vs cuSPARSE, incl. `crossover_synth` (`tab:geno`, `fig:space`) |
+| `spmm`       | ✔ | Batched right product $Y=MX$: engine vs cuSPARSE (`tab:geno_spmm`, `fig:batched`) |
+| `graph`      | ✔ | Wikidata Boolean & Tropical product vs GraphBLAS (`tab:graph`) |
+| `extract`    | ✔ | Re-derive all `tab_*.tex` + figure `.dat` from existing logs (no recompute) |
+| `plot`       | ✔ | Compile `fig_space.pdf`, `fig_batched.pdf` |
+| `graphscale` | — | Large-scale graphs, 10M–1.2G edges, incl. SWH (`tab:graph_scale`) — heavy, on demand |
+| `grammar`    | — | Offline RePair grammar-build cost (`tab:build`) — heavy, on demand |
+| `crosscheck` | — | Cross-implementation correctness (engine vs CPU / cuSPARSE / GraphBLAS / `mm-repair`); backs the bit-for-bit claims — heavy, on demand |
+
+For per-table manual commands, baseline setup (SuiteSparse:GraphBLAS, cuGraph), and full
+dataset provenance, see **[REPRODUCIBILITY.md](REPRODUCIBILITY.md)** — an optional deep-dive;
+you don't need it to reproduce the results.
+
+---
+
+## 📖 Citation
+
+If you use this software or its datasets, please cite the paper:
+
+```bibtex
+@inproceedings{tosoni2027streaming,
+  title     = {Streaming Right Multiplication over Grammar-Compressed Matrices: A Memory-Bounded {GPU} Engine for Genotype and Graph Data},
+  author    = {Tosoni, Francesco and Mencagli, Gabriele},
+  booktitle = {Proceedings of the SIAM Symposium on Algorithm Engineering and Experiments (ALENEX)},
+  year      = {2027},
+  publisher = {SIAM},
+}
+```
+
+The dataset package is archived on Zenodo, DOI [10.5281/zenodo.22677746](https://doi.org/10.5281/zenodo.22677746).
+See [`CITATION.cff`](CITATION.cff) for machine-readable citation metadata.
 
 ---
 
