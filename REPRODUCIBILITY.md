@@ -47,12 +47,15 @@ make                  # Compiles 'gpu_test' and 'host_scheduler'
 make cusparse_test    # Compiles the cuSPARSE CSR SpMV/SpMM baseline
 cd ..
 ```
+> **GPU architecture.** `gpu-engine/Makefile` sets `-arch=sm_121` for the Grace-Blackwell GB10 node. On any other GPU, edit `NVCCFLAGS` to your compute capability (e.g. `sm_90` Hopper, `sm_89` Ada, `sm_80` Ampere) before building, or `gpu_test`/`cusparse_test` will fail to launch. The structural results are architecture-independent; time/energy scale with the board (§ Limitations).
 
 ### Build mm-repair CPU Baselines
+`mm-repair` depends on [SDSL-lite](https://github.com/simongog/sdsl-lite) (packed `.iv` integer vectors); install it first — its own [`mm-repair/Readme.md`](mm-repair/Readme.md) lists the prerequisites and build steps. Then:
 ```bash
 cd mm-repair
 make clean
-# Build re32mm with detailed timing enabled
+make all              # matrepair + csvmat2csrv + brepair/irepair0 + ANS/SDSL encoders
+# For the tab:build timing column only, rebuild re32mm with detailed timing:
 make re32mm CFLAGS="-Wall -std=c99 -g -O3 -DDETAILED_TIMING"
 cd ..
 ```

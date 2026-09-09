@@ -74,6 +74,7 @@ make clean && make
 make cusparse_test
 cd ..
 ```
+> **GPU architecture.** `gpu-engine/Makefile` targets `-arch=sm_121` (the Grace-Blackwell GB10 used in the paper). Edit `NVCCFLAGS` to match your GPU's compute capability — e.g. `sm_90` (Hopper), `sm_89` (Ada), `sm_80` (Ampere) — or the binaries will not run.
 
 ### 3. Compile the `mm-repair` Toolchain
 Build the CPU grammar compressor **and the helpers it drives** — the matrix→CSRV converter (`csvmat2csrv`), RePair (`brepair/irepair0`), and the integer/ANS encoders. `make all` produces the `matrepair` constructor plus everything it invokes:
@@ -82,6 +83,7 @@ cd mm-repair
 make all
 cd ..
 ```
+> **Dependency.** `mm-repair` links against [SDSL-lite](https://github.com/simongog/sdsl-lite) (used for the packed `.iv` integer vectors). Install it first — see [`mm-repair/Readme.md`](mm-repair/Readme.md) for the exact prerequisites and build details.
 (For the manuscript's build-time column only, `re32mm` can be rebuilt with detailed timing: `make re32mm CFLAGS="-Wall -std=c99 -g -O3 -DDETAILED_TIMING"`.)
 
 ### 4. Run a Quick Test
