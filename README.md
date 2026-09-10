@@ -1,4 +1,6 @@
-# GPU-Accelerated Grammar-Compressed Matrix Multiplication (g-mm-repair)
+# Matrix multiplication on RePair-compressed matrices, on a GPU (g-mm-repair)
+
+**Repository:** <https://github.com/ftosoni/g-mm-repair>
 
 <p align="left">
   <a href="https://github.com/ftosoni/g-mm-repair/actions/workflows/ci.yml"><img src="https://github.com/ftosoni/g-mm-repair/actions/workflows/ci.yml/badge.svg?branch=main&style=flat-square" alt="CI Status"></a>
@@ -10,10 +12,14 @@
   <a href="https://doi.org/10.5281/zenodo.22677746"><img src="https://img.shields.io/badge/data-10.5281%2Fzenodo.22677746-1682D4?style=flat-square" alt="Zenodo data package DOI"></a>
 </p>
 
+[![SWH](https://archive.softwareheritage.org/badge/origin/https://github.com/ftosoni/g-mm-repair/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/ftosoni/g-mm-repair)
+[![SWH](https://archive.softwareheritage.org/badge/swh:1:dir:0a6a61c4649a0652db9af078145b4534ff80a0c3/)](https://archive.softwareheritage.org/swh:1:dir:0a6a61c4649a0652db9af078145b4534ff80a0c3;origin=https://github.com/ftosoni/g-mm-repair;visit=swh:1:snp:bf029938f68d7993e7e983b92dc7d6f65b4eac7f;anchor=swh:1:rev:4ec7a6906f431b9e79f25e95d31f3268f73de5a5)
+
 A high-performance level-synchronous GPU executor (written in CUDA C++) for computing right matrix-vector multiplication $y = Mx$ over grammar-compressed matrices. It implements a double-buffered level sweep algorithm with an **"emit-on-the-spot"** memory optimization that avoids carrying intermediate rule expansions to the top level, drastically reducing GPU memory usage and overhead.
 
 This repository implements the GPU-acceleration techniques described in the manuscript:
 > **"Streaming Right Multiplication over Grammar-Compressed Matrices: A Memory-Bounded GPU Engine for Genotype and Graph Data"**
+> — Francesco Tosoni and Gabriele Mencagli, *SIAM Symposium on Algorithm Engineering and Experiments (ALENEX 2027)*, to appear.
 
 For detailed, step-by-step instructions on reproducing all the tables and figures presented in the paper, please refer to the **[REPRODUCIBILITY.md](REPRODUCIBILITY.md)** guide.
 
@@ -193,6 +199,12 @@ documented in **[REPRODUCIBILITY.md](REPRODUCIBILITY.md)**.
 ./reproduce.sh all      # struct + time + space + spmm + graph, then extract + plot
 ```
 
+For a single-command run from a fresh clone — initialise the submodule, build everything,
+fetch + verify the Zenodo data, then run the pipeline above — use the top-level wrapper:
+```bash
+./runme.sh              # submodule init -> build -> download+verify data -> reproduce.sh all
+```
+
 Each stage produces a specific paper artifact:
 
 | `reproduce.sh <stage>` | In `all` | Paper output |
@@ -218,6 +230,8 @@ you don't need it to reproduce the results.
 
 If you use this software or its datasets, please cite the paper:
 
+> Francesco Tosoni and Gabriele Mencagli. "Streaming Right Multiplication over Grammar-Compressed Matrices: A Memory-Bounded GPU Engine for Genotype and Graph Data." In *Proceedings of the SIAM Symposium on Algorithm Engineering and Experiments (ALENEX)*, SIAM, 2027. To appear.
+
 ```bibtex
 @inproceedings{tosoni2027streaming,
   title     = {Streaming Right Multiplication over Grammar-Compressed Matrices: A Memory-Bounded {GPU} Engine for Genotype and Graph Data},
@@ -230,6 +244,12 @@ If you use this software or its datasets, please cite the paper:
 ```
 
 The dataset package is archived on Zenodo, DOI [10.5281/zenodo.22677746](https://doi.org/10.5281/zenodo.22677746).
+The source code is archived at Software Heritage; cite this exact snapshot by its SWHID:
+
+```
+swh:1:dir:0a6a61c4649a0652db9af078145b4534ff80a0c3;origin=https://github.com/ftosoni/g-mm-repair;visit=swh:1:snp:bf029938f68d7993e7e983b92dc7d6f65b4eac7f;anchor=swh:1:rev:4ec7a6906f431b9e79f25e95d31f3268f73de5a5
+```
+
 See [`CITATION.cff`](CITATION.cff) for machine-readable citation metadata.
 
 ---
