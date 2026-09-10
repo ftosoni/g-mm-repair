@@ -82,13 +82,17 @@ populate it:
   ```
   The package already contains every grammar (`.vc.C`, `.vc.R`, `.val`, …) and the
   Wikidata `.sparse` edge lists, so `./reproduce.sh crosscheck` / `struct` / `space` / `spmm` /
-  `graph` run directly. The dense matrices ship zstd-compressed; decompress them only if you
-  intend to *rebuild* a grammar (`./reproduce.sh grammar`) or run the from-scratch steps below:
+  `graph` run directly off the shipped grammar — no dense matrix is ever read by the engine,
+  cuSPARSE, `re32mm` or GraphBLAS (they reconstruct the matrix from the grammar itself).
+  The dense matrices ship zstd-compressed and are only needed to *rebuild* a grammar
+  (`./reproduce.sh grammar`, and the mm_16 column of `./reproduce.sh time`); both inflate the
+  required `<base>.zst` **on demand**, so you normally do nothing. To pre-inflate them all by
+  hand (e.g. for the from-scratch steps below):
   ```bash
   for f in zenodo/genotypes/*.zst zenodo/swh/*.zst; do zstd -d -k "$f"; done   # -> raw <base> alongside the grammar
   ```
   The three large `<base>.vc.zst` pre-RePair streams (`wd_country`, `wd_cites_work`, `swh_full`)
-  need no manual handling: `./reproduce.sh graphscale` decompresses and back-dates them
+  likewise need no manual handling: `./reproduce.sh graphscale` decompresses and back-dates them
   automatically as the lazy-rebuild gate for `matrepair -y` (§4, `tab:graph_scale`).
 - **From scratch** — rebuild the same files into the same layout with the commands in §A–§E
   below. All matrices use the same dense-int32 format consumed by `mm-repair`.

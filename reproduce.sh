@@ -128,6 +128,10 @@ run_grammar() {
   local log=$LOGS/grammar_build.log; prov "$log"
   for e in "${GENO[@]}"; do IFS='|' read -r key path r c <<<"$e"
     echo "## $key" | tee -a "$log"
+    # Full rebuild (-r, no -y) reads the bare int32 dense as its source; the package ships
+    # it zstd-compressed, so inflate on demand -- keeps `grammar` working out-of-the-box
+    # (same guard as run_benchmark_16.py's mm_16 and graphscale's .vc.zst).
+    if [ ! -f "$path" ] && [ -f "$path.zst" ]; then zstd -dq -k -f "$path.zst"; fi
     ./mm-repair/matrepair -r --i32 "$path" "$r" "$c" 2>&1 | tee -a "$log"   # -b 1, sequential (see note)
   done
 }
