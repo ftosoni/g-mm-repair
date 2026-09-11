@@ -13,7 +13,7 @@
 </p>
 
 [![SWH](https://archive.softwareheritage.org/badge/origin/https://github.com/ftosoni/g-mm-repair/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/ftosoni/g-mm-repair)
-[![SWH](https://archive.softwareheritage.org/badge/swh:1:dir:0a6a61c4649a0652db9af078145b4534ff80a0c3/)](https://archive.softwareheritage.org/swh:1:dir:0a6a61c4649a0652db9af078145b4534ff80a0c3;origin=https://github.com/ftosoni/g-mm-repair;visit=swh:1:snp:bf029938f68d7993e7e983b92dc7d6f65b4eac7f;anchor=swh:1:rev:4ec7a6906f431b9e79f25e95d31f3268f73de5a5)
+[![SWH](https://archive.softwareheritage.org/badge/swh:1:dir:b3ac33f72dfebd25b447c18a1b149eedb127fff5/)](https://archive.softwareheritage.org/swh:1:dir:b3ac33f72dfebd25b447c18a1b149eedb127fff5;origin=https://github.com/ftosoni/g-mm-repair;visit=swh:1:snp:01bc75b57db60154ee44e3ff73df684532f18c37;anchor=swh:1:rev:ac4ac2410d0e5a2cf5bda5026c08f9e68381d8da)
 
 A high-performance level-synchronous GPU executor (written in CUDA C++) for computing right matrix-vector multiplication $y = Mx$ over grammar-compressed matrices. It implements a double-buffered level sweep algorithm with an **"emit-on-the-spot"** memory optimization that avoids carrying intermediate rule expansions to the top level, drastically reducing GPU memory usage and overhead.
 
@@ -247,7 +247,7 @@ The dataset package is archived on Zenodo, DOI [10.5281/zenodo.22677746](https:/
 The source code is archived at Software Heritage; cite this exact snapshot by its SWHID:
 
 ```
-swh:1:dir:0a6a61c4649a0652db9af078145b4534ff80a0c3;origin=https://github.com/ftosoni/g-mm-repair;visit=swh:1:snp:bf029938f68d7993e7e983b92dc7d6f65b4eac7f;anchor=swh:1:rev:4ec7a6906f431b9e79f25e95d31f3268f73de5a5
+swh:1:dir:b3ac33f72dfebd25b447c18a1b149eedb127fff5;origin=https://github.com/ftosoni/g-mm-repair;visit=swh:1:snp:01bc75b57db60154ee44e3ff73df684532f18c37;anchor=swh:1:rev:ac4ac2410d0e5a2cf5bda5026c08f9e68381d8da
 ```
 
 See [`CITATION.cff`](CITATION.cff) for machine-readable citation metadata.
