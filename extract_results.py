@@ -193,7 +193,7 @@ def parse_struct(block):
 
 
 # --------------------------------------------------------------------------------------
-# Table 1 -- tab:geno_through  (genotype structural figures)
+# Table 4.1 -- tab:geno_through  (genotype structural figures)
 #   log: logs/geno_struct.log   (gpu_test structural output, one ## <key> block each)
 # --------------------------------------------------------------------------------------
 def gen_tab_geno_through():
@@ -218,7 +218,7 @@ def gen_tab_geno_through():
 
 
 # --------------------------------------------------------------------------------------
-# Table 2 -- tab:geno_time  (average ms/vector)
+# Table 4.2 -- tab:geno_time  (average ms/vector)
 #   logs: manuscript/logs/bio_results.csv     (GPU,OMP,CPU_Seq,mm_seq,mm_16)
 #         manuscript/logs/geno_space_energy.log  (cuSPARSE ms; see gen_tab_geno)
 # --------------------------------------------------------------------------------------
@@ -263,8 +263,8 @@ def gen_tab_geno_time():
 
 
 # --------------------------------------------------------------------------------------
-# Table 3 -- tab:geno  (space & energy vs cuSPARSE, incl. the crossover_synth scale point)
-# Figure 3 -- fig:space (footprint vs nnz)
+# Table 4.3 -- tab:geno  (space & energy vs cuSPARSE, incl. the crossover_synth scale point)
+# Figure 4.3 -- fig:space (footprint vs nnz)
 #   log: manuscript/logs/geno_space_energy.log
 #        one ## <key> block per dataset, containing gpu_test raw then cusparse_test raw.
 #        Engine lines:  "GPU kernel: ... = X ms/vector", "MEM analytic bytes: N",
@@ -342,7 +342,7 @@ def _i(v):  # energy shown as integer mJ in the manuscript
 
 
 # --------------------------------------------------------------------------------------
-# Table B -- tab:build  (two-part construction cost -- sec:limitations (ii))
+# Table B.1 -- tab:build  (two-part construction cost -- sec:limitations (ii))
 # Two distinct, additive host costs are reported per matrix:
 #   * grammar (RePair) build   -- the offline mm-repair compressor cost, seconds, SHARED
 #       with the CPU baseline. log: manuscript/logs/grammar_build.log, matrepair "Compression Report"
@@ -407,8 +407,8 @@ def gen_fig_space_dat():
 
 
 # --------------------------------------------------------------------------------------
-# Table 4 -- tab:geno_spmm  (best batched ms/vector, engine vs best cuSPARSE alg)
-# Figure 4 -- fig:batched   (geno22full time vs B)
+# Table A.1 -- tab:geno_spmm  (best batched ms/vector, engine vs best cuSPARSE alg)
+# Figure A.1 -- fig:batched   (geno22full time vs B)
 #   logs: manuscript/logs/geno_spmm.log         (engine sweep: "GPU batched (B=NN): ..., X ms/vector")
 #         manuscript/logs/geno_cusparse_alg.log (alg sweep: "cuSPARSE SpMM (B=NN, alg): ..., X ms/vector")
 # --------------------------------------------------------------------------------------
@@ -479,7 +479,7 @@ def gen_fig_batched_dat(key="geno22full"):
 
 
 # --------------------------------------------------------------------------------------
-# Table 5 -- tab:graph_struct  (Wikidata structural figures)
+# Table B.2 -- tab:graph_struct  (Wikidata structural figures)
 #   log: manuscript/logs/graph_struct.log
 # --------------------------------------------------------------------------------------
 def gen_tab_graph_struct():
@@ -503,7 +503,7 @@ def gen_tab_graph_struct():
 
 
 # --------------------------------------------------------------------------------------
-# Table 6 -- tab:graph  (Boolean & Tropical right product across Wikidata relations)
+# Table 5.2 -- tab:graph  (Boolean & Tropical right product across Wikidata relations)
 #   log: manuscript/logs/graph_semiring.log
 #        blocks keyed ## <key>_<semiring>  (e.g. wd_sports_team_boolean).
 #        engine single ms:  "GPU kernel: ... = X ms/vector"
@@ -563,7 +563,7 @@ def gen_tab_graph():
 
 
 # --------------------------------------------------------------------------------------
-# Table -- tab:graph_scale  (largest two Wikidata relations, bracketing compressibility)
+# Table 5.1 -- tab:graph_scale  (largest two Wikidata relations, bracketing compressibility)
 #   log: manuscript/logs/graph_scale.log, one ## <key> block per relation, three sub-parts:
 #     engine:   SEMIRING=boolean gpu_test -> struct (|R|,L), "MEM analytic bytes" (eng dev),
 #               "GPU kernel: ... = X ms/vector" (Boolean engine time)

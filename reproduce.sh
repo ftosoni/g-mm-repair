@@ -97,7 +97,7 @@ prov() {   # prov <logfile>  -- write a provenance header, truncating the log
   } > "$f"
 }
 
-# ---- structural figures (Table 1 / Table 5): cheap, node-independent -----------------
+# ---- structural figures (Table 4.1 / Table B.2): cheap, node-independent -----------------
 run_struct() {
   local log=$LOGS/geno_struct.log; prov "$log"
   for e in "${GENO[@]}"; do IFS='|' read -r key path r c <<<"$e"
@@ -111,7 +111,7 @@ run_struct() {
   done
 }
 
-# ---- Table B grammar column: RePair construction cost (offline mm-repair) ------------
+# ---- Table B.1 grammar column: RePair construction cost (offline mm-repair) ------------
 # Captures matrepair's "Compression Report" per genotype grammar. Uses -r (full report)
 # WITHOUT -y, so it does a full rebuild for a real timing; the build is deterministic
 # (single block, --i32) and rewrites identical files, so it is safe to run in place. This
@@ -136,10 +136,10 @@ run_grammar() {
   done
 }
 
-# ---- Table 2 (times): reuse the existing CSV-producing driver ------------------------
+# ---- Table 4.2 (times): reuse the existing CSV-producing driver ------------------------
 run_time() { bash run_all_bio_baselines.sh; }   # writes $LOGS/bio_results.csv
 
-# ---- Table 3 + fig:space (space/energy vs cuSPARSE, incl. crossover OOM) --------------
+# ---- Table 4.3 + fig:space (space/energy vs cuSPARSE, incl. crossover OOM) --------------
 run_space() {
   local log=$LOGS/geno_space_energy.log; prov "$log"
   for e in "${GENO[@]}" "$CROSSOVER"; do IFS='|' read -r key path r c <<<"$e"
@@ -150,7 +150,7 @@ run_space() {
   done
 }
 
-# ---- Table 4 + fig:batched (batched SpMM sweep, engine + cuSPARSE alg sweep) ----------
+# ---- Table A.1 + fig:batched (batched SpMM sweep, engine + cuSPARSE alg sweep) ----------
 run_spmm() {
   local elog=$LOGS/geno_spmm.log; prov "$elog"
   local clog=$LOGS/geno_cusparse_alg.log; prov "$clog"
@@ -163,7 +163,7 @@ run_spmm() {
   done
 }
 
-# ---- Table 6 (Boolean/Tropical graph product + GraphBLAS baseline) --------------------
+# ---- Table 5.2 (Boolean/Tropical graph product + GraphBLAS baseline) --------------------
 run_graph() {
   local log=$LOGS/graph_semiring.log; prov "$log"
   for e in "${GRAPH[@]}"; do IFS='|' read -r key path r c <<<"$e"

@@ -17,7 +17,7 @@
 
 """16-thread mm-repair benchmark for one matrix: rebuilds the RePair grammar with
 16 row-blocks (-b 16 -p 16) and times re32mm at 16 threads. Produces the
-'mmr (16th)' column of Table 2 (tab:geno_time); run_all_bio_baselines.sh calls it
+'mmr (16th)' column of Table 4.2 (tab:geno_time); run_all_bio_baselines.sh calls it
 alongside run_benchmark.py, which supplies the other columns. mm-repair parallelizes
 coarsely (one independent grammar per row-block), which is the baseline the paper
 contrasts with its fine-grained, inside-one-grammar GPU scheme."""

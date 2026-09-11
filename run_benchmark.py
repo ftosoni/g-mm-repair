@@ -18,7 +18,7 @@
 """Single-vector benchmark for one matrix: compiles the GPU engine + mm-repair's
 re32mm, runs y = M x, and prints the GPU / OpenMP / CPU-sequential / mm-repair
 (re32mm) times side by side. This is the per-dataset driver that
-run_all_bio_baselines.sh loops over to fill Table 2 (tab:geno_time); the summary
+run_all_bio_baselines.sh loops over to fill Table 4.2 (tab:geno_time); the summary
 labels (1)-(4) map to that table's columns. The GPU/OMP/seq times are parsed from
 gpu_test's stdout, the mm-repair time from re32mm's DETAILED_TIMING stderr."""
 import os

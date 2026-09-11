@@ -16,14 +16,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Reproduce Table 3 (tab:geno): run the grammar engine and the cuSPARSE CSR
+"""Reproduce Table 4.3 (tab:geno): run the grammar engine and the cuSPARSE CSR
 baseline across the genotype matrices plus the crossover/OOM matrix, collecting
 time, analytic device bytes, measured peak bytes, and energy/vector. Produces the
 combined space/energy table for the paper (see REPRODUCIBILITY.md section on
-Table 3). crossover_synth is where cuSPARSE OOMs while the engine stays resident."""
+Table 4.3). crossover_synth is where cuSPARSE OOMs while the engine stays resident."""
 import subprocess, os, re
 
-# Genotype matrices + the crossover/OOM matrix that make up Table 3 (tab:geno) of the
+# Genotype matrices + the crossover/OOM matrix that make up Table 4.3 (tab:geno) of the
 # manuscript. (path, rows, cols); paths mirror run_all_bio_baselines.sh.
 datasets = [
     ("geno/geno22",                        2504,  100000),
