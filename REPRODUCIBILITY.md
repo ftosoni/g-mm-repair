@@ -10,7 +10,7 @@
 
 This document gives step-by-step instructions to reproduce **all and only** the tables and figures presented in the manuscript. The manuscript reports two experiment families: **genotype matrices** (1000 Genomes + synthetic haplotypes, `PlusTimes` semiring) and **knowledge-graph relation matrices** (Wikidata relations, `Boolean`/`Tropical` semirings).
 
-These experiments were originally profiled and measured on a remote prototyping node (**NVIDIA Grace-Blackwell GB10 node**, featuring unified coherent CPU-GPU memory of 119 GiB, CUDA 13.0, g++ 13.3, and Ubuntu 24.04 LTS). Per the manuscript (§ Limitations), time/energy figures are board-dependent; the structural figures ($|\mathcal{R}|$, $L$, $w^{*}$, $+\text{pt}$) are architecture-independent and reproducible on any host.
+These experiments were originally profiled and measured on a remote prototyping node (**NVIDIA Grace-Blackwell GB10 node**, featuring unified coherent CPU-GPU memory of 119 GiB, CUDA 13.0, g++ 13.3, and Ubuntu 24.04 LTS). Per the manuscript (§7, Limitations), time/energy figures are board-dependent; the structural figures ($|\mathcal{R}|$, $L$, $w^{*}$, $+\text{pt}$) are architecture-independent and reproducible on any host.
 
 > **Standard (discrete) GPUs.** No hardware-coherent memory is required: the engine and baselines use portable CUDA managed memory (`cudaMallocManaged`, supported on every CUDA GPU since Pascal), with the ordinary *host-fill → sync → kernel → sync → host-read* pattern. The memory-bounded engine fits comfortably on any modern discrete card; only the *dense cuSPARSE baseline* at billion-nonzero scale needs correspondingly large VRAM, and on a smaller board it oversubscribes or OOMs — exactly the regime `fig:space` already charts (the engine's deterministic/structural results are unaffected). Remember to set `-arch` to your GPU (§1). If you hit an environment-specific issue, please open a [GitHub issue](https://github.com/ftosoni/g-mm-repair/issues).
 
@@ -31,7 +31,7 @@ The complete inventory of manuscript artifacts this guide reproduces:
 | Figure 4.3 (`fig:space`) | Memory footprint (incl. `crossover_synth` at billion-nnz scale) | genotype matrices + crossover |
 | Figure A.1 (`fig:batched`) | Batched throughput vs. $B$ | `geno22full` |
 
-(The remaining figures — `fig:matrix`, `fig:mmr_rs`, `fig:dag`, `fig:completion`, `fig:sweep`, `fig:trace` — are schematic TikZ/`includegraphics` illustrations of the running example, not measured results, and require no experiment to regenerate.)
+(The remaining figures — Figure 3.1 (`fig:dag`), Figure 4.1 (`fig:sweep`), Figure 4.2 (`fig:trace`) — are schematic TikZ/`includegraphics` illustrations of the running example, not measured results, and require no experiment to regenerate.)
 
 > **Reproduction flow.** In order: **§1** compile the binaries → **§2** build/download the datasets (skip if already on the node) → **`./reproduce.sh all`**, which runs every core experiment into `manuscript/logs/`, then regenerates the tables (`manuscript/tables/*.tex`) and figure data (`manuscript/figures/data/*.dat`) via `extract_results.py`. `reproduce.sh` and its canonical logs are the source of truth; the per-table commands in §3 are the manual equivalents of what it automates, and §4 documents the log→artifact mapping. Three heavy families (`grammar`, `graphscale`, `crosscheck`) are **not** in `all` and are run on demand (§3/§4).
 
@@ -49,7 +49,7 @@ make                  # Compiles 'gpu_test' and 'host_scheduler'
 make cusparse_test    # Compiles the cuSPARSE CSR SpMV/SpMM baseline
 cd ..
 ```
-> **GPU architecture.** `gpu-engine/Makefile` defaults to `CUDA_ARCH=sm_121` for the Grace-Blackwell GB10 node. On any other GPU, build with `make CUDA_ARCH=sm_XX` for your compute capability (e.g. `sm_90` Hopper, `sm_89` Ada, `sm_80` Ampere; or `CUDA_ARCH=native`), or `gpu_test`/`cusparse_test` will fail to launch. The structural results are architecture-independent; time/energy scale with the board (§ Limitations).
+> **GPU architecture.** `gpu-engine/Makefile` defaults to `CUDA_ARCH=sm_121` for the Grace-Blackwell GB10 node. On any other GPU, build with `make CUDA_ARCH=sm_XX` for your compute capability (e.g. `sm_90` Hopper, `sm_89` Ada, `sm_80` Ampere; or `CUDA_ARCH=native`), or `gpu_test`/`cusparse_test` will fail to launch. The structural results are architecture-independent; time/energy scale with the board (§7, Limitations).
 
 ### Build mm-repair CPU Baselines
 `mm-repair` depends on [SDSL-lite](https://github.com/simongog/sdsl-lite) (packed `.iv` integer vectors); install it first — its own [`mm-repair/Readme.md`](https://github.com/ftosoni/mm-repair-fork/blob/main/Readme.md) lists the prerequisites and build steps. Then:
@@ -401,7 +401,7 @@ done
 
 ## 4. From logs to tables and figures (automated extraction)
 
-The manuscript tables and the two measured figures are **generated from the logs**, not transcribed by hand. The chain is:
+The manuscript tables and the two data-driven figures (4.3, A.1) are **generated from the logs**, not transcribed by hand. The chain is:
 
 ```
 run experiment  ->  manuscript/logs/<experiment>.log   (raw, provenance-headed, "## <key>" blocks)
@@ -438,7 +438,7 @@ The following logs are **not** parsed by `extract_results.py` (they back correct
 |---|---|---|
 | `manuscript/logs/crosscheck.log` | Cross-implementation correctness (§2.F); certifies the full SWH graph bit-for-bit | `reproduce.sh crosscheck` |
 | `manuscript/logs/graphblas_bench.log` | Standalone SuiteSparse:GraphBLAS baseline (Table 5.2's GB numbers are extracted from `graph_semiring.log`, which embeds the same run) | `gb_run.sh` |
-| `manuscript/logs/cugraph_bench.log` | cuGraph BFS/SSSP end-to-end reference, discussed in the manuscript (§ Limitations) | `cg_run.sh` |
+| `manuscript/logs/cugraph_bench.log` | cuGraph BFS/SSSP end-to-end reference, discussed in the manuscript (§7, Limitations) | `cg_run.sh` |
 
 ### Host-side construction cost (Table B.1 / `tab:build`)
 `tab:build` reports **two distinct, additive** host construction costs per genotype matrix:

@@ -342,7 +342,7 @@ def _i(v):  # energy shown as integer mJ in the manuscript
 
 
 # --------------------------------------------------------------------------------------
-# Table B.1 -- tab:build  (two-part construction cost -- sec:limitations (ii))
+# Table B.1 -- tab:build  (two-part construction cost -- Section 7, Limitations item 2)
 # Two distinct, additive host costs are reported per matrix:
 #   * grammar (RePair) build   -- the offline mm-repair compressor cost, seconds, SHARED
 #       with the CPU baseline. log: manuscript/logs/grammar_build.log, matrepair "Compression Report"

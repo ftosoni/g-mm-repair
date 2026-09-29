@@ -220,7 +220,7 @@ Each stage produces a specific paper artifact:
 | `spmm`       | ✔ | Batched right product $Y=MX$: engine vs cuSPARSE — **Table A.1** & **Figure A.1** |
 | `graph`      | ✔ | Wikidata Boolean & Tropical product vs GraphBLAS — **Table 5.2** |
 | `extract`    | ✔ | Re-derive every table + figure datum from the existing logs (no recompute) |
-| `plot`       | ✔ | Compile the two measured figures (4.3, A.1) |
+| `plot`       | ✔ | Compile the two data-driven figures (4.3, A.1) |
 | `graphscale` | — | Large-scale graphs, 10M–1.2G edges, incl. SWH — **Table 5.1** (heavy, on demand) |
 | `grammar`    | — | Offline RePair grammar-build cost — **Table B.1** (heavy, on demand) |
 | `crosscheck` | — | Cross-implementation correctness (engine vs CPU / cuSPARSE / GraphBLAS / `mm-repair`); backs the bit-for-bit claims (heavy, on demand) |
