@@ -12,15 +12,16 @@
 #   4. run ./reproduce.sh all  -> experiments -> tables (manuscript/tables/*.tex)
 #      + figure data (manuscript/figures/data/*.dat) + compiled figures
 #
-# Before running on a non-GB10 GPU, set the arch in gpu-engine/Makefile (NVCCFLAGS
-# -arch=sm_XX) to your compute capability, and make sure SDSL-lite is installed.
+# Before running on a non-GB10 GPU, set CUDA_ARCH to your compute capability
+# (e.g. CUDA_ARCH=sm_90 ./runme.sh, or CUDA_ARCH=native), and make sure SDSL-lite is installed.
 #
 # Usage:   ./runme.sh
 # Env:     SKIP_DATA=1 ./runme.sh     # do not touch ./zenodo/ (data already in place)
 #          ZENODO_DIR=/path ./runme.sh
+#          CUDA_ARCH=sm_90 CUDA_HOME=/opt/cuda ./runme.sh
 set -euo pipefail
 cd "$(dirname "$0")"
-export PATH=/usr/local/cuda/bin:$PATH
+export PATH=${CUDA_HOME:-/usr/local/cuda}/bin:$PATH
 ZENODO_DIR=${ZENODO_DIR:-zenodo}
 say() { printf '\n\033[1m==== %s ====\033[0m\n' "$*"; }
 
@@ -28,8 +29,8 @@ say "1/4  Initialise submodule (mm-repair)"
 git submodule update --init --recursive
 
 say "2/4  Build (GPU engine + cuSPARSE baseline, then mm-repair)"
-echo "    NOTE: gpu-engine/Makefile targets -arch=sm_121 (GB10). Edit NVCCFLAGS for your GPU"
-echo "          (e.g. sm_90 Hopper, sm_89 Ada, sm_80 Ampere) or the binaries will not launch."
+echo "    NOTE: building for CUDA_ARCH=${CUDA_ARCH:-sm_121} (default: GB10). Set CUDA_ARCH for your GPU"
+echo "          (e.g. sm_90 Hopper, sm_89 Ada, sm_80 Ampere, or native) or the binaries will not launch."
 echo "    NOTE: mm-repair needs SDSL-lite installed (see mm-repair/Readme.md)."
 make -C gpu-engine all
 make -C mm-repair all

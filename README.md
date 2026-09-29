@@ -1,16 +1,14 @@
 # Matrix multiplication on RePair-compressed matrices, on a GPU (g-mm-repair)
 
-**Repository:** <https://github.com/ftosoni/g-mm-repair>
+**Repository:** [https://github.com/ftosoni/g-mm-repair](https://github.com/ftosoni/g-mm-repair)
 
-<p align="left">
-  <a href="https://github.com/ftosoni/g-mm-repair/actions/workflows/ci.yml"><img src="https://github.com/ftosoni/g-mm-repair/actions/workflows/ci.yml/badge.svg?branch=main&style=flat-square" alt="CI Status"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-blue?style=flat-square" alt="License"></a>
-  <a href="https://en.cppreference.com/"><img src="https://img.shields.io/badge/C%2B%2B-17-00599C?logo=c%2B%2B&logoColor=white&style=flat-square" alt="C++ 17"></a>
-  <a href="https://developer.nvidia.com/cuda-zone"><img src="https://img.shields.io/badge/CUDA-12.0+-76B900?logo=nvidia&logoColor=white&style=flat-square" alt="CUDA 12.0+"></a>
-  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.8+-3776ab?logo=python&logoColor=white&style=flat-square" alt="Python 3.8+"></a>
-  <a href="https://www.openmp.org/"><img src="https://img.shields.io/badge/OpenMP-Parallel-blue?style=flat-square" alt="OpenMP"></a>
-  <a href="https://doi.org/10.5281/zenodo.22677746"><img src="https://img.shields.io/badge/data-10.5281%2Fzenodo.22677746-1682D4?style=flat-square" alt="Zenodo data package DOI"></a>
-</p>
+[![CI Status](https://github.com/ftosoni/g-mm-repair/actions/workflows/ci.yml/badge.svg?branch=main&style=flat-square)](https://github.com/ftosoni/g-mm-repair/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache_2.0-blue?style=flat-square)](./LICENSE)
+[![C++ 17](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=c%2B%2B&logoColor=white&style=flat-square)](https://en.cppreference.com/)
+[![CUDA 12.0+](https://img.shields.io/badge/CUDA-12.0+-76B900?logo=nvidia&logoColor=white&style=flat-square)](https://developer.nvidia.com/cuda-zone)
+[![Python 3.8+](https://img.shields.io/badge/Python-3.8+-3776ab?logo=python&logoColor=white&style=flat-square)](https://www.python.org/)
+[![OpenMP](https://img.shields.io/badge/OpenMP-Parallel-blue?style=flat-square)](https://www.openmp.org/)
+[![Zenodo data package DOI](https://img.shields.io/badge/data-10.5281%2Fzenodo.22677746-1682D4?style=flat-square)](https://doi.org/10.5281/zenodo.22677746)
 
 [![SWH](https://archive.softwareheritage.org/badge/origin/https://github.com/ftosoni/g-mm-repair/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/ftosoni/g-mm-repair)
 [![SWH](https://archive.softwareheritage.org/badge/swh:1:dir:b3ac33f72dfebd25b447c18a1b149eedb127fff5/)](https://archive.softwareheritage.org/swh:1:dir:b3ac33f72dfebd25b447c18a1b149eedb127fff5;origin=https://github.com/ftosoni/g-mm-repair;visit=swh:1:snp:01bc75b57db60154ee44e3ff73df684532f18c37;anchor=swh:1:rev:ac4ac2410d0e5a2cf5bda5026c08f9e68381d8da)
@@ -21,7 +19,7 @@ This repository implements the GPU-acceleration techniques described in the manu
 > **"Streaming Right Multiplication over Grammar-Compressed Matrices: A Memory-Bounded GPU Engine for Genotype and Graph Data"**
 > — Francesco Tosoni and Gabriele Mencagli, *SIAM Symposium on Algorithm Engineering and Experiments (ALENEX 2027)*, to appear.
 
-For detailed, step-by-step instructions on reproducing all the tables and figures presented in the paper, please refer to the **[REPRODUCIBILITY.md](REPRODUCIBILITY.md)** guide.
+To regenerate the paper's tables and figures, the [Reproducibility](#-reproducibility) section below is all you need (a single `./runme.sh`). **[REPRODUCIBILITY.md](REPRODUCIBILITY.md)** collects further details: per-experiment manual commands, baseline setup, dataset provenance and file formats.
 
 ---
 
@@ -80,7 +78,9 @@ make clean && make
 make cusparse_test
 cd ..
 ```
-> **GPU architecture.** `gpu-engine/Makefile` targets `-arch=sm_121` (the Grace-Blackwell GB10 used in the paper). Edit `NVCCFLAGS` to match your GPU's compute capability — e.g. `sm_90` (Hopper), `sm_89` (Ada), `sm_80` (Ampere) — or the binaries will not run.
+> **GPU architecture.** `gpu-engine/Makefile` targets `sm_121` by default (the Grace-Blackwell GB10 used in the paper). On any other GPU pass your compute capability, e.g. `make CUDA_ARCH=sm_90` (Hopper), `sm_89` (Ada), `sm_80` (Ampere), or `make CUDA_ARCH=native` for the GPU of the build machine; otherwise the binaries will not run.
+>
+> **CUDA toolkit.** `nvcc` is taken from `$CUDA_HOME/bin` if `CUDA_HOME` is set, else from `PATH`, else from `/usr/local/cuda/bin`; `make NVCC=/path/to/nvcc` overrides it. The scripts (`runme.sh`, `reproduce.sh`, ...) honour `CUDA_HOME` as well.
 
 ### 3. Compile the `mm-repair` Toolchain
 Build the CPU grammar compressor **and the helpers it drives** — the matrix→CSRV converter (`csvmat2csrv`), RePair (`brepair/irepair0`), and the integer/ANS encoders. `make all` produces the `matrepair` constructor plus everything it invokes:
@@ -89,8 +89,10 @@ cd mm-repair
 make all
 cd ..
 ```
-> **Dependency.** `mm-repair` links against [SDSL-lite](https://github.com/simongog/sdsl-lite) (used for the packed `.iv` integer vectors). Install it first — see [`mm-repair/Readme.md`](mm-repair/Readme.md) for the exact prerequisites and build details.
+> **Dependency.** `mm-repair` links against [SDSL-lite](https://github.com/simongog/sdsl-lite) (used for the packed `.iv` integer vectors). Install it first — see [`mm-repair/Readme.md`](https://github.com/ftosoni/mm-repair-fork/blob/main/Readme.md) for the exact prerequisites and build details.
 (For the manuscript's build-time column only, `re32mm` can be rebuilt with detailed timing: `make re32mm CFLAGS="-Wall -std=c99 -g -O3 -DDETAILED_TIMING"`.)
+
+> **Memory.** By default `matrepair` lets RePair use 90% of the RAM, capped by the cgroup memory limit when running under a batch scheduler (e.g. Slurm) or in a container; `matrepair -m <MB>` sets the budget explicitly. The grammars used in the paper are already in the Zenodo package, so rebuilding them is only needed for the build-cost table (`reproduce.sh grammar`).
 
 ### 4. Run a Quick Test
 For validation and benchmarking of a specific compressed matrix, run the test driver by passing the matrix base path and dimensions:
@@ -163,9 +165,7 @@ All datasets (1000 Genomes genotypes, synthetic haplotypes, `crossover_synth`, t
 relations, and the billion-edge Software Heritage graph) and the RePair grammars the engine
 consumes are archived on Zenodo:
 
-<p align="left">
-  <a href="https://doi.org/10.5281/zenodo.22677746"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.22677746.svg" alt="Zenodo DOI"></a>
-</p>
+[![Zenodo DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22677746.svg)](https://doi.org/10.5281/zenodo.22677746)
 
 > **DOI:** [`10.5281/zenodo.22677746`](https://doi.org/10.5281/zenodo.22677746) — concept DOI,
 > always resolves to the latest version (camera-ready version: [`10.5281/zenodo.22677747`](https://doi.org/10.5281/zenodo.22677747)).

@@ -39,7 +39,7 @@
 set -uo pipefail
 
 cd "$(dirname "$0")"
-export PATH=/usr/local/cuda/bin:$PATH
+export PATH=${CUDA_HOME:-/usr/local/cuda}/bin:$PATH
 # Canonical logs live under manuscript/logs/ (gitignored), co-located with the
 # tables/figures they feed. extract_results.py reads from the same directory.
 LOGS=manuscript/logs

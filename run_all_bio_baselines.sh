@@ -18,7 +18,7 @@
 
 cd "$(dirname "$0")"
 
-export PATH=/usr/local/cuda/bin:$PATH
+export PATH=${CUDA_HOME:-/usr/local/cuda}/bin:$PATH
 
 # Results go under manuscript/logs/ (gitignored), co-located with the tables/figures.
 mkdir -p manuscript/logs

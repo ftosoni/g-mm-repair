@@ -49,10 +49,10 @@ make                  # Compiles 'gpu_test' and 'host_scheduler'
 make cusparse_test    # Compiles the cuSPARSE CSR SpMV/SpMM baseline
 cd ..
 ```
-> **GPU architecture.** `gpu-engine/Makefile` sets `-arch=sm_121` for the Grace-Blackwell GB10 node. On any other GPU, edit `NVCCFLAGS` to your compute capability (e.g. `sm_90` Hopper, `sm_89` Ada, `sm_80` Ampere) before building, or `gpu_test`/`cusparse_test` will fail to launch. The structural results are architecture-independent; time/energy scale with the board (§ Limitations).
+> **GPU architecture.** `gpu-engine/Makefile` defaults to `CUDA_ARCH=sm_121` for the Grace-Blackwell GB10 node. On any other GPU, build with `make CUDA_ARCH=sm_XX` for your compute capability (e.g. `sm_90` Hopper, `sm_89` Ada, `sm_80` Ampere; or `CUDA_ARCH=native`), or `gpu_test`/`cusparse_test` will fail to launch. The structural results are architecture-independent; time/energy scale with the board (§ Limitations).
 
 ### Build mm-repair CPU Baselines
-`mm-repair` depends on [SDSL-lite](https://github.com/simongog/sdsl-lite) (packed `.iv` integer vectors); install it first — its own [`mm-repair/Readme.md`](mm-repair/Readme.md) lists the prerequisites and build steps. Then:
+`mm-repair` depends on [SDSL-lite](https://github.com/simongog/sdsl-lite) (packed `.iv` integer vectors); install it first — its own [`mm-repair/Readme.md`](https://github.com/ftosoni/mm-repair-fork/blob/main/Readme.md) lists the prerequisites and build steps. Then:
 ```bash
 cd mm-repair
 make clean
@@ -233,7 +233,7 @@ javac -cp "jars/*" Dump.java && java -Xmx6g -cp "jars/*:." Dump graph "$SW/swh_f
 # 3. RePair-compress (no dense matrix; --bool = textual "row col" nonzeros):
 $REPO/mm-repair/matrepair -r --bool "$SW/swh_full" 45691499 45691499                   # REANS 490 MB, 3.22 bpe
 # 4. Structural check + Boolean device footprint:
-export PATH=/usr/local/cuda/bin:$PATH
+export PATH=${CUDA_HOME:-/usr/local/cuda}/bin:$PATH
 SEMIRING=boolean $REPO/gpu-engine/gpu_test "$SW/swh_full" 45691499 45691499 1 repair    # struct + device footprint (CPU ref auto-skipped >30M rows)
 # The >30M skip is a speed guard, not a hard limit. To certify the *full* published graph
 # bit-for-bit, force the CPU oracle on (slow, ~1.5 s/vector CPU seq, one-off):
@@ -378,7 +378,7 @@ python3 -m venv cgvenv
 # Automated execution of all relations:
 chmod +x cg_run.sh && ./cg_run.sh > manuscript/logs/cugraph_bench.log 2>&1
 # Or run manually (RAPIDS pip wheels need their bundled libs on the loader path):
-export LD_LIBRARY_PATH="$(find cgvenv/lib/python3.12/site-packages -type d \( -name lib -o -name lib64 \) | tr '\n' ':'):/usr/local/cuda/lib64"
+export LD_LIBRARY_PATH="$(find cgvenv/lib/python3.12/site-packages -type d \( -name lib -o -name lib64 \) | tr '\n' ':'):${CUDA_HOME:-/usr/local/cuda}/lib64"
 ./cgvenv/bin/python cugraph_bench.py zenodo/wikidata/wd_sports_team.sparse 332121 29854 bool 20      # BFS
 ./cgvenv/bin/python cugraph_bench.py zenodo/wikidata/wd_sports_team.sparse 332121 29854 tropical 20  # SSSP
 ```

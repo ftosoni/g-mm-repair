@@ -1,8 +1,8 @@
 #!/bin/bash
 cd "$(dirname "$0")"
 SP=cgvenv/lib/python3.12/site-packages
-export LD_LIBRARY_PATH="$(find $SP -type d \( -name lib -o -name lib64 \) | tr "\n" :):/usr/local/cuda/lib64"
-export PATH=/usr/local/cuda/bin:$PATH
+export LD_LIBRARY_PATH="$(find $SP -type d \( -name lib -o -name lib64 \) | tr "\n" :):${CUDA_HOME:-/usr/local/cuda}/lib64"
+export PATH=${CUDA_HOME:-/usr/local/cuda}/bin:$PATH
 Z=${ZENODO_DIR:-zenodo}/wikidata   # Wikidata .sparse edge lists from the Zenodo package (sec 2.D)
 declare -A DIM=( [wd_sports_team]="332121 29854" [wd_cast_member]="173977 144095" [wd_citizenship]="2874250 2556" [wd_occupation]="3459933 10610" [wd_subclass_of]="1487709 73417" )
 for b in wd_sports_team wd_cast_member wd_citizenship wd_occupation wd_subclass_of; do
