@@ -2,6 +2,8 @@
 
 **Repository:** [https://github.com/ftosoni/g-mm-repair](https://github.com/ftosoni/g-mm-repair)
 
+**PDF version of this README:** [README.pdf](README.pdf)
+
 [![CI Status](https://github.com/ftosoni/g-mm-repair/actions/workflows/ci.yml/badge.svg?branch=main&style=flat-square)](https://github.com/ftosoni/g-mm-repair/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue?style=flat-square)](./LICENSE)
 [![C++ 17](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=c%2B%2B&logoColor=white&style=flat-square)](https://en.cppreference.com/)
