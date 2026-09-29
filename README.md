@@ -13,7 +13,7 @@
 [![Zenodo data package DOI](https://img.shields.io/badge/data-10.5281%2Fzenodo.22677746-1682D4?style=flat-square)](https://doi.org/10.5281/zenodo.22677746)
 
 [![SWH](https://archive.softwareheritage.org/badge/origin/https://github.com/ftosoni/g-mm-repair/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/ftosoni/g-mm-repair)
-[![SWH](https://archive.softwareheritage.org/badge/swh:1:dir:181a2df29892702b991f3d7fc9c62c4ddfb2be68/)](https://archive.softwareheritage.org/swh:1:dir:181a2df29892702b991f3d7fc9c62c4ddfb2be68;origin=https://github.com/ftosoni/g-mm-repair;visit=swh:1:snp:2ff7d1b4bd2af458c13ad0005e228ccd99140b31;anchor=swh:1:rev:84b2e3f109dfd3fa8dac1cf4e2088191ed3a2e67)
+[![SWH](https://archive.softwareheritage.org/badge/swh:1:dir:ef2c5f738ef173b38a2c7f1edc8969d06159785d/)](https://archive.softwareheritage.org/swh:1:dir:ef2c5f738ef173b38a2c7f1edc8969d06159785d;origin=https://github.com/ftosoni/g-mm-repair;visit=swh:1:snp:f6872312e0713082be0ecd7209b57db4008f8df6;anchor=swh:1:rev:f007357c261ff4f8b1314ccd0c486eca88cfd8b3)
 
 A high-performance level-synchronous GPU executor (written in CUDA C++) for computing right matrix-vector multiplication $y = Mx$ over grammar-compressed matrices. It implements a double-buffered level sweep algorithm with an **"emit-on-the-spot"** memory optimization that avoids carrying intermediate rule expansions to the top level, drastically reducing GPU memory usage and overhead.
 
@@ -252,7 +252,7 @@ The dataset package is archived on Zenodo, DOI [10.5281/zenodo.22677746](https:/
 The source code is archived at Software Heritage; cite this exact snapshot by its SWHID:
 
 ```
-swh:1:dir:181a2df29892702b991f3d7fc9c62c4ddfb2be68;origin=https://github.com/ftosoni/g-mm-repair;visit=swh:1:snp:2ff7d1b4bd2af458c13ad0005e228ccd99140b31;anchor=swh:1:rev:84b2e3f109dfd3fa8dac1cf4e2088191ed3a2e67
+swh:1:dir:ef2c5f738ef173b38a2c7f1edc8969d06159785d;origin=https://github.com/ftosoni/g-mm-repair;visit=swh:1:snp:f6872312e0713082be0ecd7209b57db4008f8df6;anchor=swh:1:rev:f007357c261ff4f8b1314ccd0c486eca88cfd8b3
 ```
 
 See [`CITATION.cff`](CITATION.cff) for machine-readable citation metadata.
