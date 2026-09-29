@@ -166,6 +166,8 @@ run_spmm() {
 # ---- Table 5.2 (Boolean/Tropical graph product + GraphBLAS baseline) --------------------
 run_graph() {
   local log=$LOGS/graph_semiring.log; prov "$log"
+  [ -x ./gbvenv/bin/python ] || echo "WARNING: ./gbvenv missing -> GraphBLAS columns of Table 5.2 will be '--'." \
+    "Create it with: python3 -m venv gbvenv && ./gbvenv/bin/pip install python-graphblas (or run ./runme.sh)" >&2
   for e in "${GRAPH[@]}"; do IFS='|' read -r key path r c <<<"$e"
     for sr in boolean tropical; do
       echo "## ${key}_${sr}" | tee -a "$log"

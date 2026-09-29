@@ -7,7 +7,8 @@
 # REPRODUCIBILITY.md -- nothing new:
 #
 #   1. initialise the mm-repair submodule
-#   2. build the GPU engine + cuSPARSE baseline and the mm-repair toolchain
+#   2. build the GPU engine + cuSPARSE baseline and the mm-repair toolchain,
+#      and create ./gbvenv (python-graphblas) for the GraphBLAS baseline
 #   3. fetch + verify the Zenodo data package into ./zenodo/ (skipped if present)
 #   4. run ./reproduce.sh all  -> experiments -> tables (manuscript/tables/*.tex)
 #      + figure data (manuscript/figures/data/*.dat) + compiled figures
@@ -34,6 +35,13 @@ echo "          (e.g. sm_90 Hopper, sm_89 Ada, sm_80 Ampere, or native) or the b
 echo "    NOTE: mm-repair needs SDSL-lite installed (see mm-repair/Readme.md)."
 make -C gpu-engine all
 make -C mm-repair all
+# CPU semiring baseline for Table 5.2 (SuiteSparse:GraphBLAS, the versions used in the paper)
+if [ ! -x gbvenv/bin/python ]; then
+  echo "    Creating ./gbvenv (python-graphblas) for the GraphBLAS baseline ..."
+  python3 -m venv gbvenv
+  ./gbvenv/bin/pip install -q python-graphblas==2025.2.0 suitesparse-graphblas==9.4.5.0 \
+    || ./gbvenv/bin/pip install -q python-graphblas   # no wheel for this Python: take the latest
+fi
 
 say "3/4  Data package (Zenodo doi:10.5281/zenodo.22677746)"
 if [ "${SKIP_DATA:-0}" = "1" ]; then

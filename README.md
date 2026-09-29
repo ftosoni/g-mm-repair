@@ -206,6 +206,9 @@ fetch + verify the Zenodo data, then run the pipeline above — use the top-leve
 ```bash
 ./runme.sh              # submodule init -> build -> download+verify data -> reproduce.sh all
 ```
+Besides building, `runme.sh` creates `./gbvenv`, a Python virtualenv with `python-graphblas` for the
+SuiteSparse:GraphBLAS baseline of Table 5.2 (needs `python3-venv` and network access). When calling
+`reproduce.sh` directly, create it first: `python3 -m venv gbvenv && ./gbvenv/bin/pip install python-graphblas`.
 
 Each stage produces a specific paper artifact:
 
