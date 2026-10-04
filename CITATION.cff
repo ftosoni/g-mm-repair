@@ -18,6 +18,17 @@ authors:
     affiliation: "Department of Computer Science, University of Pisa, Italy"
 license: Apache-2.0
 repository-code: "https://github.com/ftosoni/g-mm-repair"
+doi: 10.5281/zenodo.23139248
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23139248
+    description: "Version of the code evaluated for ALENEX 2027 (Zenodo, tag alenex27-ae)"
+  - type: doi
+    value: 10.5281/zenodo.22677746
+    description: "Datasets and RePair grammars (Zenodo, concept DOI)"
+  - type: swh
+    value: "swh:1:rev:f007357c261ff4f8b1314ccd0c486eca88cfd8b3"
+    description: "Source snapshot archived at Software Heritage"
 keywords:
   - grammar compression
   - RePair

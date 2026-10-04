@@ -10,10 +10,7 @@
 [![CUDA 12.0+](https://img.shields.io/badge/CUDA-12.0+-76B900?logo=nvidia&logoColor=white&style=flat-square)](https://developer.nvidia.com/cuda-zone)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-3776ab?logo=python&logoColor=white&style=flat-square)](https://www.python.org/)
 [![OpenMP](https://img.shields.io/badge/OpenMP-Parallel-blue?style=flat-square)](https://www.openmp.org/)
-[![Zenodo data package DOI](https://img.shields.io/badge/data-10.5281%2Fzenodo.22677746-1682D4?style=flat-square)](https://doi.org/10.5281/zenodo.22677746)
-
 [![SWH](https://archive.softwareheritage.org/badge/origin/https://github.com/ftosoni/g-mm-repair/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/ftosoni/g-mm-repair)
-[![SWH](https://archive.softwareheritage.org/badge/swh:1:dir:ef2c5f738ef173b38a2c7f1edc8969d06159785d/)](https://archive.softwareheritage.org/swh:1:dir:ef2c5f738ef173b38a2c7f1edc8969d06159785d;origin=https://github.com/ftosoni/g-mm-repair;visit=swh:1:snp:f6872312e0713082be0ecd7209b57db4008f8df6;anchor=swh:1:rev:f007357c261ff4f8b1314ccd0c486eca88cfd8b3)
 
 A high-performance level-synchronous GPU executor (written in CUDA C++) for computing right matrix-vector multiplication $y = Mx$ over grammar-compressed matrices. It implements a double-buffered level sweep algorithm with an **"emit-on-the-spot"** memory optimization that avoids carrying intermediate rule expansions to the top level, drastically reducing GPU memory usage and overhead.
 
@@ -22,6 +19,26 @@ This repository implements the GPU-acceleration techniques described in the manu
 > — Francesco Tosoni and Gabriele Mencagli, *SIAM Symposium on Algorithm Engineering and Experiments (ALENEX 2027)*, to appear.
 
 To regenerate the paper's tables and figures, the [Reproducibility](#-reproducibility) section below is all you need (a single `./runme.sh`). **[REPRODUCIBILITY.md](REPRODUCIBILITY.md)** collects further details: per-experiment manual commands, baseline setup, dataset provenance and file formats.
+
+---
+
+## 🏅 Artifact Availability and Reproducibility (ALENEX 2027)
+
+The version of the code evaluated by the ALENEX 2027 Artifact Evaluation Committee, and the data it consumes, are permanently archived:
+
+[![Zenodo code DOI](https://img.shields.io/badge/code-10.5281%2Fzenodo.23139248-1682D4?style=flat-square)](https://doi.org/10.5281/zenodo.23139248)
+[![Zenodo data DOI](https://img.shields.io/badge/data-10.5281%2Fzenodo.22677747-1682D4?style=flat-square)](https://doi.org/10.5281/zenodo.22677747)
+[![SWH](https://archive.softwareheritage.org/badge/swh:1:dir:ef2c5f738ef173b38a2c7f1edc8969d06159785d/)](https://archive.softwareheritage.org/swh:1:dir:ef2c5f738ef173b38a2c7f1edc8969d06159785d;origin=https://github.com/ftosoni/g-mm-repair;visit=swh:1:snp:f6872312e0713082be0ecd7209b57db4008f8df6;anchor=swh:1:rev:f007357c261ff4f8b1314ccd0c486eca88cfd8b3)
+
+| | |
+|---|---|
+| **Code** | Zenodo, DOI [`10.5281/zenodo.23139248`](https://doi.org/10.5281/zenodo.23139248): `g-mm-repair.tar.gz`, including the `mm-repair` submodule |
+| **Data** | Zenodo, DOI [`10.5281/zenodo.22677747`](https://doi.org/10.5281/zenodo.22677747): datasets and RePair grammars (see [Data Availability](#-data-availability)) |
+| **Version** | Git tag [`alenex27-ae`](https://github.com/ftosoni/g-mm-repair/releases/tag/alenex27-ae), commit `f5bce98` (submodule `mm-repair` at `ee2e03b`) |
+| **Archive MD5** | `2f2325848f1f48eed2a116334a3b2d25` (same file on Zenodo and on the GitHub release) |
+| **Source snapshot** | Software Heritage, revision [`f007357`](https://archive.softwareheritage.org/swh:1:dir:ef2c5f738ef173b38a2c7f1edc8969d06159785d;origin=https://github.com/ftosoni/g-mm-repair;visit=swh:1:snp:f6872312e0713082be0ecd7209b57db4008f8df6;anchor=swh:1:rev:f007357c261ff4f8b1314ccd0c486eca88cfd8b3): same code as `f5bce98`, which only updates the SWHID quoted in this README |
+
+To reproduce the paper from the archived code: `tar xzf g-mm-repair.tar.gz && cd g-mm-repair && ./runme.sh` (see [Reproducibility](#-reproducibility)).
 
 ---
 
@@ -249,7 +266,8 @@ If you use this software or its datasets, please cite the paper:
 ```
 
 The dataset package is archived on Zenodo, DOI [10.5281/zenodo.22677746](https://doi.org/10.5281/zenodo.22677746).
-The source code is archived at Software Heritage; cite this exact snapshot by its SWHID:
+The version of the code evaluated for ALENEX 2027 is archived on Zenodo, DOI [10.5281/zenodo.23139248](https://doi.org/10.5281/zenodo.23139248).
+The source code is also archived at Software Heritage; cite this exact snapshot by its SWHID:
 
 ```
 swh:1:dir:ef2c5f738ef173b38a2c7f1edc8969d06159785d;origin=https://github.com/ftosoni/g-mm-repair;visit=swh:1:snp:f6872312e0713082be0ecd7209b57db4008f8df6;anchor=swh:1:rev:f007357c261ff4f8b1314ccd0c486eca88cfd8b3
