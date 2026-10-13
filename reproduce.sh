@@ -297,6 +297,12 @@ run_plot() {
     done )
 }
 
+# zstd inflates the zstandard-compressed dense inputs on demand (time, grammar, graphscale).
+case "${1:-all}" in all|time|grammar|graphscale)
+  command -v zstd >/dev/null 2>&1 || echo "WARNING: zstd not found -> the 'mmr (16th)' column of Table 4.2," \
+    "the grammar-build table and graphscale will be incomplete. Install it (e.g. sudo apt install zstd)." >&2 ;;
+esac
+
 case "${1:-all}" in
   struct)  run_struct ;;
   grammar) run_grammar ;;

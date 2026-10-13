@@ -41,6 +41,8 @@ The complete inventory of manuscript artifacts this guide reproduces:
 
 Before running any experiments, compile the GPU engine, baseline tests, and CPU-side `mm-repair` binaries:
 
+**System prerequisites:** CUDA Toolkit ≥ 12.0 (`nvcc`, cuSPARSE, NVML), `g++` (C++17, OpenMP), GNU `make`, SDSL-lite, Python 3 with `venv`, and the command-line tools `git`, `curl`, `tar`, `md5sum`, `zstd`. `zstd` inflates the zstandard-compressed dense inputs of the data package: without it the `time` (16-thread `mm-repair` column of Table 4.2), `grammar` and `graphscale` stages are incomplete.
+
 ### Build the GPU Engine & cuSPARSE Baselines
 ```bash
 cd gpu-engine

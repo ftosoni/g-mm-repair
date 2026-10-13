@@ -14,7 +14,8 @@
 #      + figure data (manuscript/figures/data/*.dat) + compiled figures
 #
 # Before running on a non-GB10 GPU, set CUDA_ARCH to your compute capability
-# (e.g. CUDA_ARCH=sm_90 ./runme.sh, or CUDA_ARCH=native), and make sure SDSL-lite is installed.
+# (e.g. CUDA_ARCH=sm_90 ./runme.sh, or CUDA_ARCH=native), and make sure SDSL-lite and zstd
+# are installed.
 #
 # Usage:   ./runme.sh
 # Env:     SKIP_DATA=1 ./runme.sh     # do not touch ./zenodo/ (data already in place)
@@ -25,6 +26,18 @@ cd "$(dirname "$0")"
 export PATH=${CUDA_HOME:-/usr/local/cuda}/bin:$PATH
 ZENODO_DIR=${ZENODO_DIR:-zenodo}
 say() { printf '\n\033[1m==== %s ====\033[0m\n' "$*"; }
+
+# Fail fast on missing command-line prerequisites, instead of half-way through the run
+# (zstd inflates the zstandard-compressed dense inputs of the data package on demand).
+tools="git make g++ ${NVCC:-nvcc} tar zstd python3"
+[ "${SKIP_DATA:-0}" = "1" ] || tools="$tools curl md5sum"
+missing=""
+for t in $tools; do command -v "$t" >/dev/null 2>&1 || missing="$missing $t"; done
+if [ -n "$missing" ]; then
+  echo "ERROR: missing required tool(s):$missing" >&2
+  echo "       Install them first (e.g. on Debian/Ubuntu: sudo apt install zstd); see README.md, Prerequisites." >&2
+  exit 1
+fi
 
 say "1/4  Initialise submodule (mm-repair)"
 git submodule update --init --recursive

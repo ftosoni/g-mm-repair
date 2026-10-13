@@ -80,6 +80,8 @@ g-mm-repair/
 
 ## 🚀 Quick Start
 
+**Prerequisites.** A single NVIDIA GPU with the CUDA Toolkit ≥ 12.0 (`nvcc`, cuSPARSE, NVML); a C++17 compiler with OpenMP (`g++`) and GNU `make`; [SDSL-lite](https://github.com/simongog/sdsl-lite); Python 3 with `venv`; and the command-line tools `git`, `curl`, `tar`, `md5sum` and `zstd`. `zstd` is needed because the dense inputs in the data package are zstandard-compressed and are inflated on demand (e.g. `sudo apt install zstd` on Debian/Ubuntu). `runme.sh` checks for these tools before starting.
+
 ### 1. Get the Code (with the `mm-repair` submodule)
 The CPU-side grammar compressor lives in the **`mm-repair` submodule**, so it must be initialized — a fresh `git clone` leaves `mm-repair/` empty otherwise:
 ```bash
