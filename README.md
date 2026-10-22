@@ -20,6 +20,21 @@ This repository implements the GPU-acceleration techniques described in the manu
 
 To regenerate the paper's tables and figures, the [Reproducibility](#-reproducibility) section below is all you need (a single `./runme.sh`). **[REPRODUCIBILITY.md](REPRODUCIBILITY.md)** collects further details: per-experiment manual commands, baseline setup, dataset provenance and file formats.
 
+> **Table and figure numbers.** Throughout this repository (this README, [REPRODUCIBILITY.md](REPRODUCIBILITY.md), `reproduce.sh`, `extract_results.py`, `manuscript/`), table, figure and section numbers refer to the full version of the paper on arXiv, **[arXiv:2607.24971v1](https://arxiv.org/abs/2607.24971v1)**, which also contains the supplementary material that the ALENEX 2027 proceedings omit for space (Figure A.1 and Table B.1). The camera-ready numbers the measured results differently:
+>
+> | arXiv v1 | Camera-ready | Content |
+> |---|---|---|
+> | Table 4.1 | Table 6.1 | Genotype structural figures |
+> | Table 4.2 | Table 6.2 | Genotype time per vector (the camera-ready's last column is the speed-up over cuSPARSE, from the same data) |
+> | Table 4.3 | Table 6.3 | Genotype space and energy vs cuSPARSE |
+> | Figure 4.3 | Figure 6.1 | Device footprint vs non-zeros |
+> | Table 5.1 | Table 6.6 | Largest graphs (10M–1.2G edges) |
+> | Table 5.2 | Table 6.7 | Wikidata Boolean and Tropical product |
+> | Table A.1 | Table 6.4 | Batched right product (SpMM) |
+> | Figure A.1 | — (arXiv only) | Batched throughput vs batch size $B$ |
+> | Table B.1 | — (arXiv only) | Host-side construction cost |
+> | Table B.2 | Table 6.5 | Wikidata structural figures |
+
 ---
 
 ## 🏅 Artifact Availability and Reproducibility (ALENEX 2027)
